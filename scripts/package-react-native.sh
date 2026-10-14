@@ -5,7 +5,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${script_dir}/release-common.sh"
 sfiora_parse_package_arguments "$@"
-sfiora_guard_output "${sfiora_root}/dist/react-native/sandrox-sfiora-${sfiora_version}.tgz"
+sfiora_guard_output "${sfiora_root}/dist/react-native/sfiora-react-native-${sfiora_version}.tgz"
 
 for command_name in npm ruby tar unzip; do
     sfiora_require_command "${command_name}"
@@ -38,7 +38,7 @@ trap 'sfiora_cleanup_temporary_directory "${temporary_dir}"' EXIT
 package_dir="${temporary_dir}/package"
 source_dir="${sfiora_root}/adapters/react-native"
 artifact_dir="${sfiora_root}/dist/react-native"
-artifact_name="sandrox-sfiora-${sfiora_version}.tgz"
+artifact_name="sfiora-react-native-${sfiora_version}.tgz"
 artifact_path="${artifact_dir}/${artifact_name}"
 
 mkdir -p \
@@ -117,10 +117,19 @@ ruby -rjson -e '
 
 mkdir -p "${artifact_dir}"
 rm -f -- "${artifact_path}" "${artifact_path}.sha256"
-npm pack \
+packed_name="$(npm pack \
     --ignore-scripts \
-    --pack-destination "${artifact_dir}" \
-    "${package_dir}" >/dev/null
+    --json \
+    --pack-destination "${temporary_dir}" \
+    "${package_dir}" | ruby -rjson -e '
+      packages = JSON.parse(STDIN.read)
+      abort("Expected one packed React Native package") unless packages.length == 1
+      name = packages.fetch(0).fetch("filename")
+      abort("Unsafe npm archive filename") unless
+        name == File.basename(name) && name.end_with?(".tgz")
+      puts name
+    ')"
+mv "${temporary_dir}/${packed_name}" "${artifact_path}"
 
 if [[ ! -f "${artifact_path}" ]]; then
     echo "React Native package was not produced: ${artifact_path}" >&2

@@ -69,7 +69,7 @@ class ReactNativeVerification
     @rn_version = JSON.parse(@rn.join("package.json").read).fetch("version")
     @ios_flags = %w[legacy new].to_h { |architecture| [architecture, self.class.ios_flags(architecture, @environment)] }
     version = JSON.parse(@root.join("plugin.json").read).fetch("version")
-    @artifact = @root.join("dist/react-native/sandrox-sfiora-#{version}.tgz")
+    @artifact = @root.join("dist/react-native/sfiora-react-native-#{version}.tgz")
     expected = @artifact.sub_ext(".tgz.sha256").read.split.fetch(0)
     raise Error, "React Native artifact checksum differs" unless
       expected.match?(/\A[0-9a-f]{64}\z/) && Digest::SHA256.file(@artifact).hexdigest == expected

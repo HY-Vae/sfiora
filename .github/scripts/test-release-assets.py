@@ -56,7 +56,7 @@ class ReleaseAssetsTest(unittest.TestCase):
             path.write_bytes(data)
         self.git("init", "-q")
         self.git("add", ".")
-        self.npm_path = self.artifacts / f"sandrox-sfiora-{self.version}.tgz"
+        self.npm_path = self.artifacts / f"sfiora-react-native-{self.version}.tgz"
         self.npm_files = release.rn_sources(self.source)
         self.npm_files.update({"android/libs/" + name: data for name, data in self.android.items()})
         self.npm_files["android/libs/sfiora-bridge-support.aar"] = self.bridge

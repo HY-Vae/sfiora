@@ -200,7 +200,7 @@ def verify_embedded(files, version, prefix, android_dir, ios_dir, android, ios_p
 
 
 def verify_npm(source, artifacts, version, android, ios_path, ios_files):
-    path = artifacts / f"sandrox-sfiora-{version}.tgz"
+    path = artifacts / f"sfiora-react-native-{version}.tgz"
     verify_sidecar(path)
     files = read_archive(path)
     package = json.loads(files["package.json"])

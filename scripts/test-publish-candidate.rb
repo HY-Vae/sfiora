@@ -86,6 +86,11 @@ class PublishCandidateTest < Minitest::Test
     @candidate_path = @candidate_root.join("candidate.json")
     @candidate_path.write(JSON.pretty_generate(@candidate) + "\n")
     @candidate_digest = Digest::SHA256.file(@candidate_path).hexdigest
+    @accepted_rn = entries.find { |entry| entry.fetch("role") == "react-native-package" }
+    @public_rn_archive = @candidate_root.join("artifacts/sfiora-react-native-1.0.0.tgz")
+    @public_rn_checksum = Pathname.new("#{@public_rn_archive}.sha256")
+    FileUtils.cp(@candidate_root.join(@accepted_rn.fetch("file")), @public_rn_archive)
+    @public_rn_checksum.write("#{@accepted_rn.fetch('sha256')}  #{@public_rn_archive.basename}\n")
     @verifier = {"repository" => @policy.fetch("verifierRepository"), "commit" => "f" * 40, "dirty" => false}
     automated = @policy.dig("acceptance", "automatedTargets").to_h do |target|
       run = {
@@ -189,11 +194,45 @@ class PublishCandidateTest < Minitest::Test
     roles = %w[native-ios-xcframework native-build-manifest react-native-package checksum-react-native-package
                uniapp-legacy-package checksum-uniapp-legacy-package uniapp-uts-package checksum-uniapp-uts-package]
     expected = @candidate.fetch("artifacts").select { |entry| roles.include?(entry.fetch("role")) }
-      .map { |entry| @candidate_root.join(entry.fetch("file")).realpath.to_s }
+      .map do |entry|
+        case entry.fetch("role")
+        when "react-native-package" then @public_rn_archive.realpath.to_s
+        when "checksum-react-native-package" then @public_rn_checksum.realpath.to_s
+        else @candidate_root.join(entry.fetch("file")).realpath.to_s
+        end
+      end
     paths = output.lines.map(&:chomp).select { |line| line.start_with?(@candidate_root.realpath.to_s) }
     assert_equal expected.sort, paths.sort
     assert_includes output, "Instructions only"
     assert_includes output, "Mirror Android AAR"
+    assert_equal @candidate_digest, Digest::SHA256.file(@candidate_path).hexdigest
+    assert_equal @receipt, JSON.parse(@receipt_path.read)
+  end
+
+  def test_public_rn_copy_must_match_the_frozen_candidate_even_with_a_matching_sidecar
+    @public_rn_archive.binwrite("x" * @public_rn_archive.size)
+    @public_rn_checksum.write("#{Digest::SHA256.file(@public_rn_archive).hexdigest}  #{@public_rn_archive.basename}\n")
+    _output, error, status = run_gate(publisher: true, channel: "github")
+    refute status.success?
+    assert_match(/Public RN tarball differs from the accepted bytes/, error)
+  end
+
+  def test_public_rn_sidecar_must_name_the_public_archive
+    @public_rn_checksum.write("#{@accepted_rn.fetch('sha256')}  #{File.basename(@accepted_rn.fetch('file'))}\n")
+    _output, error, status = run_gate(publisher: true, channel: "npm")
+    refute status.success?
+    assert_match(/Public RN checksum must name the public tarball/, error)
+  end
+
+  def test_public_rn_copy_must_be_a_regular_file
+    @public_rn_archive.unlink
+    _output, error, status = run_gate(publisher: true, channel: "github")
+    refute status.success?
+    assert_match(/Public RN tarball is missing or symbolic/, error)
+    File.symlink(@candidate_root.join(@accepted_rn.fetch("file")), @public_rn_archive)
+    _output, error, status = run_gate(publisher: true, channel: "github")
+    refute status.success?
+    assert_match(/Public RN tarball is missing or symbolic/, error)
   end
 
   def test_maven_instructions_need_no_token_and_only_name_the_signed_bundle
@@ -222,6 +261,7 @@ class PublishCandidateTest < Minitest::Test
     assert_includes output, "publish-npm.yml"
     assert_includes output, "no npm settings page yet"
     assert_includes output, "--ignore-scripts"
+    assert_includes output, @public_rn_archive.realpath.to_s
   ensure
     ENV["PATH"] = previous if previous
   end

@@ -218,9 +218,18 @@ accepted files initially:
 
 - `sfiora-<version>.xcframework.zip`
 - `sfiora-native-<version>.json`
-- `sandrox-sfiora-<version>.tgz` and its `.sha256`
+- `sfiora-react-native-<version>.tgz` and its `.sha256`
 - `sfiora-uniapp-<version>.zip` and its `.sha256`
 - `sfiora-uniapp-legacy-<version>.zip` and its `.sha256`
+
+The npm package identity remains `@sandrox/sfiora`; the GitHub archive name is
+independent of the registry's download filename. To rename an accepted archive,
+place a byte-identical copy with the public name beside the accepted tarball and
+write its `.sha256` using the same digest and the new filename. Keep the original
+candidate files and receipt unchanged. `publish-accepted.rb` verifies the copy's
+size, hash, and sidecar before listing it. Upload the new pair, verify the public
+downloads, and update maintained download references before removing the old
+Release attachments. This does not require another npm publication.
 
 From 1.1.0, the default UNI archive is the UTS module shared by classic uni-app
 and uni-app x; the `-legacy` archive is the classic native plugin. The published

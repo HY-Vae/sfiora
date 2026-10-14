@@ -55,8 +55,8 @@ jobs:
               '.isDraft == false and .isPrerelease == false and .tagName == $version' >/dev/null
           mkdir -p dist
           gh release download "$VERSION" --repo "$GITHUB_REPOSITORY" \
-            --pattern "sandrox-sfiora-$VERSION.tgz" \
-            --pattern "sandrox-sfiora-$VERSION.tgz.sha256" \
+            --pattern "sfiora-react-native-$VERSION.tgz" \
+            --pattern "sfiora-react-native-$VERSION.tgz.sha256" \
             --pattern "sfiora-native-$VERSION.json" \
             --pattern "sfiora-$VERSION.xcframework.zip" --dir dist
           for artifact in sfiora sfiora-ui; do
@@ -104,5 +104,5 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          npm publish "./dist/sandrox-sfiora-$VERSION.tgz" \
+          npm publish "./dist/sfiora-react-native-$VERSION.tgz" \
             --access public --ignore-scripts --provenance --registry https://registry.npmjs.org/
