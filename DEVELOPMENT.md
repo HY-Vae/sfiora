@@ -174,6 +174,9 @@ artifact families, retaining the current version and the latest canonical local
 tag's version; unknown files and historical candidate directories stay intact.
 Details and exceptions are in [RELEASING.md](RELEASING.md#build-and-snapshot).
 
+UNI reuses `sfiora-legacy`, `sfiora-uts` and `sfiora-x` across source development,
+artifact acceptance and publication, with one selected input set per mode.
+Source results do not become artifact evidence when the project is reused.
 Consumer workspace names, input refresh and retirement commands are maintained
 in the test repository's `verification/sfiora/README.md`. Keep local authorization
 and signing inputs in their registered ignored configuration files, not solely

@@ -278,11 +278,14 @@ version again. Credentials stay in the normal npm authentication flow.
 
 ### UniApp / DCloud
 
-Open the existing consumer project that installed the accepted UTS archive,
+Use the test repository's UNI upload preparation to restore the accepted UTS
+archive in its fixed UTS or x project. Open that project in HBuilderX,
 right-click `uni_modules/Sandrox-Sfiora`, and choose **发布到插件市场**. Use the
 packaged `readme.md`; no second manual copy is needed. Keep executable files
 unchanged. HBuilderX may write back market metadata and changelog dates. Verify
-the public Marketplace installation separately in the test repository. The
+the public Marketplace installation by preparing an empty module location and
+importing into the same project. Compare the downloaded files before running
+the downstream consumer check. Do not upload the whole test project. The
 legacy ZIP remains a compatibility/offline artifact.
 
 Keep lasting market declarations in the source
@@ -311,8 +314,10 @@ After every public channel is available, update the Sfiora entry in
 lengths, and SHA-256 values. Only that change makes Sfiora the default stable
 demo dependency.
 
-After updating the stable lock, retain the current published consumers and at
-most one in-progress version. Retire completed source workspaces and older
+After updating the stable lock, retain the current published inputs and at
+most one in-progress version. UNI switches those inputs in one project per
+mode; retaining artifacts does not require simultaneous runnable copies.
+Retire completed source workspaces and older
 runnable consumers using the test repository's `verification/sfiora/README.md`.
 Candidate hashes identify immutable artifacts and evidence, not additional
 runnable hosts. Preserve local inputs, logs, historical packages, receipts and
