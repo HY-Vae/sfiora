@@ -310,3 +310,11 @@ After every public channel is available, update the Sfiora entry in
 `integrated-plugins/verification/stable-lock.json` with the public URLs, byte
 lengths, and SHA-256 values. Only that change makes Sfiora the default stable
 demo dependency.
+
+After updating the stable lock, retain the current published consumers and at
+most one in-progress version. Retire completed source workspaces and older
+runnable consumers using the test repository's `verification/sfiora/README.md`.
+Candidate hashes identify immutable artifacts and evidence, not additional
+runnable hosts. Preserve local inputs, logs, historical packages, receipts and
+device observations when removing generated output; do not rebuild a published
+product version to recover a consumer project.

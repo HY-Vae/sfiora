@@ -160,7 +160,9 @@ exit. These are package checks, separate from everyday source development.
 | `dist/candidate.json` | Identity and hashes of the current candidate |
 
 Keep interactive hosts in the test repository's fixed `development/.work/sfiora`
-locations. Edit source here and host pages there, not generated copies. Re-run
+locations. Use the named UNI project printed by that entry; application
+identifiers remain the configured values. Edit source here and host pages
+there, not generated copies. Re-run
 preparation and build after native/bridge changes; JavaScript hot reload cannot
 install changed native code.
 
@@ -171,6 +173,12 @@ as a generic cleanup. Candidate recording already prunes only its known older
 artifact families, retaining the current version and the latest canonical local
 tag's version; unknown files and historical candidate directories stay intact.
 Details and exceptions are in [RELEASING.md](RELEASING.md#build-and-snapshot).
+
+Consumer workspace names, input refresh and retirement commands are maintained
+in the test repository's `verification/sfiora/README.md`. Keep local authorization
+and signing inputs in their registered ignored configuration files, not solely
+in generated hosts. Publication retention follows
+[RELEASING.md](RELEASING.md#public-verification).
 
 ## Documentation maintenance
 
