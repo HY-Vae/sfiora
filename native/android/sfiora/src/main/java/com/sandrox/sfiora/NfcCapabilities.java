@@ -17,6 +17,7 @@ public final class NfcCapabilities {
                     NfcFeature.NDEF,
                     NfcFeature.NDEF_WRITE,
                     NfcFeature.NDEF_INITIALIZE,
+                    NfcFeature.NDEF_FORMAT,
                     NfcFeature.READ_ONLY_MIFARE_ULTRALIGHT_PROBE,
                     NfcFeature.READ_ONLY_TYPE_2_PROBE,
                     NfcFeature.READ_ONLY_MIFARE_CLASSIC_DEFAULT_KEY_PROBE

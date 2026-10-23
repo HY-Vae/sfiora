@@ -80,6 +80,19 @@ public class SfioraModuleDelegateTest {
         assertEquals(false, state.value);
     }
 
+    @Test public void capabilitiesExcludeOperationsWithoutBridgeEntryPoints() throws Exception {
+        Reply capabilities = reply();
+        fromNativeModules(() -> delegate.getCapabilities(capabilities.promise));
+        await(() -> capabilities.calls == 1);
+        assertNull(capabilities.code);
+        assertEquals(Boolean.TRUE, MapTransport.lastValue.get("supported"));
+        List<?> features = (List<?>) MapTransport.lastValue.get("features");
+        assertTrue(features.contains("ndefWrite"));
+        assertTrue(features.contains("ndefInitialize"));
+        assertFalse(features.contains("ndefFormat"));
+        assertFalse(adapter.isInReaderMode());
+    }
+
     @Test public void pauseAndActivityReplacementKeepClosingSessionBusyUntilIoExits() throws Exception {
         Reply first = reply();
         fromNativeModules(() -> delegate.startScan(options(), first.promise));

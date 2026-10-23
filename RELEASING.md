@@ -323,3 +323,9 @@ Candidate hashes identify immutable artifacts and evidence, not additional
 runnable hosts. Preserve local inputs, logs, historical packages, receipts and
 device observations when removing generated output; do not rebuild a published
 product version to recover a consumer project.
+
+Upload directly from the accepted artifact paths. Retire temporary upload
+copies after checking their lengths and hashes against the retained originals,
+preserving any unique records separately. A candidate's original archive name
+may remain referenced by its manifest even after a public filename correction;
+do not delete that file merely because the renamed download has identical bytes.

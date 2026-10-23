@@ -11,6 +11,7 @@ import com.sandrox.sfiora.NfcCapabilities;
 import com.sandrox.sfiora.NfcClient;
 import com.sandrox.sfiora.NfcError;
 import com.sandrox.sfiora.NfcErrorCode;
+import com.sandrox.sfiora.NfcFeature;
 import com.sandrox.sfiora.NfcForegroundDispatchController;
 import com.sandrox.sfiora.NfcInitializationResult;
 import com.sandrox.sfiora.NfcTagSnapshot;
@@ -22,10 +23,12 @@ import com.sandrox.sfiora.ui.NfcPresentationState;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -38,6 +41,15 @@ public final class SfioraBridgeRuntime {
     }
 
     private static final SfioraBridgeRuntime SHARED = new SfioraBridgeRuntime();
+    private static final Set<NfcFeature> BRIDGE_FEATURES = Collections.unmodifiableSet(EnumSet.of(
+            NfcFeature.DISCOVER,
+            NfcFeature.NDEF,
+            NfcFeature.NDEF_WRITE,
+            NfcFeature.NDEF_INITIALIZE,
+            NfcFeature.READ_ONLY_MIFARE_ULTRALIGHT_PROBE,
+            NfcFeature.READ_ONLY_TYPE_2_PROBE,
+            NfcFeature.READ_ONLY_MIFARE_CLASSIC_DEFAULT_KEY_PROBE
+    ));
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private NfcScanController scanController;
     private NfcWriteController writeController;
@@ -209,9 +221,22 @@ public final class SfioraBridgeRuntime {
         }
         return value;
     }
-    public void getCapabilities(Context context, ResultCallback callback) {
+    /** Device availability and features exposed by the bridge's public API. */
+    public static Map<String, Object> getCapabilities(Context context) {
         NfcCapabilities capabilities = NfcCapabilities.from(context);
-        invoke(callback, success(capabilities.toMap()));
+        Map<String, Object> value = new LinkedHashMap<>(capabilities.toMap());
+        List<String> features = new ArrayList<>();
+        for (NfcFeature feature : capabilities.getFeatures()) {
+            if (BRIDGE_FEATURES.contains(feature)) {
+                features.add(feature.getValue());
+            }
+        }
+        value.put("features", Collections.unmodifiableList(features));
+        return Collections.unmodifiableMap(value);
+    }
+
+    public void getCapabilities(Context context, ResultCallback callback) {
+        invoke(callback, success(getCapabilities(context)));
     }
 
     public void startScan(Context context, Object options, ResultCallback callback) {

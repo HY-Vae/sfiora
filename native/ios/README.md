@@ -282,9 +282,9 @@ insufficient. A Simulator build is not an NFC hardware test.
 Writes have no rollback. Cancellation, timeout, loss of contact, or failed
 verification after writing begins can leave changed, partial, or empty data.
 `recoverable` does not guarantee old contents survived. Sfiora does not upload
-tag contents, format or permanently lock tags, change passwords, clone access
-cards, emulate cards, or expose arbitrary APDU writes. Application storage and
-data interpretation belong to the host.
+tag contents. The iOS API does not provide tag formatting, permanent locking,
+tag password management, access-card copying, card emulation, or arbitrary APDU
+writes. Application storage and data interpretation belong to the host.
 
 [Product overview](../../README-EN.md) ·
 [Release history](../../CHANGELOG.md) · [Issues](https://github.com/sandroxy/sfiora/issues) ·

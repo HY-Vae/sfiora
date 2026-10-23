@@ -6,6 +6,7 @@ public enum NfcFeature {
     NDEF("ndef"),
     NDEF_WRITE("ndefWrite"),
     NDEF_INITIALIZE("ndefInitialize"),
+    NDEF_FORMAT("ndefFormat"),
     READ_ONLY_MIFARE_ULTRALIGHT_PROBE("readOnlyMifareUltralightProbe"),
     READ_ONLY_TYPE_2_PROBE("readOnlyType2Probe"),
     READ_ONLY_MIFARE_CLASSIC_DEFAULT_KEY_PROBE(

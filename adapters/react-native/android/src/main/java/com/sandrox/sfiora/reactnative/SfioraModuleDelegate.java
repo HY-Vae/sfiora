@@ -10,7 +10,6 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.UiThreadUtil;
 import com.facebook.react.common.LifecycleState;
 import com.sandrox.sfiora.NdefExternalType;
-import com.sandrox.sfiora.NfcCapabilities;
 import com.sandrox.sfiora.NfcClient;
 import com.sandrox.sfiora.NfcError;
 import com.sandrox.sfiora.NfcErrorCode;
@@ -48,8 +47,8 @@ final class SfioraModuleDelegate implements LifecycleEventListener {
                 reject(promise, internalError("The NFC bridge has been invalidated"));
                 return;
             }
-            NfcCapabilities capabilities = NfcCapabilities.from(reactContext);
-            promise.resolve(Arguments.makeNativeMap(capabilities.toMap()));
+            promise.resolve(Arguments.makeNativeMap(
+                    SfioraBridgeRuntime.getCapabilities(reactContext)));
         });
     }
 

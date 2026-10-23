@@ -1,7 +1,7 @@
 # Sfiora for Android
 
 Foreground NFC discovery, NDEF reads, verified writes, and marker-based
-initialization. Requires Android API 21 or newer and a physical NFC-capable
+initialization, plus explicit NDEF formatting in the Android headless core. Requires Android API 21 or newer and a physical NFC-capable
 device. The host must also satisfy its framework requirements.
 
 Use the [headless client](#headless-read-write-and-initialization) when the app
@@ -155,6 +155,69 @@ call `cancelRead()` or `cancelWrite()` and handle the cancellation result.
 `NDEF` and `DISCOVER` are also available. Read/write timeouts range from 1 to 60
 seconds. Start an operation before presenting a tag, or use the optional
 foreground dispatcher below if tags may remain nearby between operations.
+
+## Explicit NDEF formatting
+
+`NfcClient.startFormat` prepares tags for NDEF through the headless core.
+
+Call it only after the user explicitly chooses to prepare a tag for NDEF.
+It uses Android [NdefFormatable](https://developer.android.com/reference/android/nfc/tech/NdefFormatable),
+which is available only for the tags that the particular device can format.
+`unsupported` NDEF status alone does not prove that a tag can be formatted.
+No password guessing, raw memory fallback, permanent locking, or automatic retry
+is performed. Formatting may replace non-NDEF data and alter access configuration;
+it is not a general factory reset or a repair for every kind of tag.
+
+Formatting writes one `TNF_EMPTY` record. Android must then rediscover the tag
+before NDEF can be verified. When `onVerificationRequired` fires, ask the user
+to remove and present the same tag again.
+The operation remains busy until this verification or a terminal failure.
+Success with `action: "formatted"` requires matching tag IDs, writable NDEF and
+an exact live readback of the empty message. Matching the ID is an operational
+check, not authentication; keep one tag in the field and use tags with stable IDs.
+
+If the first tag already exposes `Ndef`, its live content is read and returned
+with `action: "preserved"`; no format or write occurs. This also preserves
+read-only tags, which remain read-only. Read the returned snapshot's NDEF status
+before starting an application write. `verified: true` means the returned content
+was read successfully, not that a preserved tag has become writable.
+
+If Android returns no live message for an existing NDEF tag, the result is
+`action: "preserved", verified: false` without writing. The snapshot reports
+`ndef.status: "readError"`, retains its access metadata and includes a warning;
+its empty returned records do not establish that the tag is empty. The caller
+can request another read to check the contents; no cached message is substituted.
+Successful formatting always requires `verified: true`; an absent verification
+message is a failure.
+
+```java
+public void formatTag() {
+    if (!canStart()) return;
+    client.startFormat(NfcWriteConfiguration.builder().timeoutMillis(60_000L).build(),
+        new NfcClient.FormatCallback() {
+            @Override public void onVerificationRequired() {
+                show("Remove the tag, then present the same tag again to verify NDEF.");
+            }
+            @Override public void onSuccess(NfcFormatResult result) {
+                show(result.toPrettyJsonString());
+            }
+            @Override public void onFailure(NfcError error) {
+                show(error.getCode().getValue() + ": " + error.getMessage());
+            }
+        });
+}
+```
+
+Add this method to the Activity example above. Callbacks use the main
+thread; `isWriting()`, `cancelWrite()`, `stop()` and `close()` also cover formatting.
+The configured timeout covers both presentations and is not extended after the
+format command. `UNSUPPORTED_TAG` means formatting is unavailable for this tag
+or its ID cannot be matched. `WRITE_VERIFICATION_FAILED` includes presenting a
+different tag, NDEF still being absent, read-only state after formatting, or
+readback mismatch. Cancellation, loss, timeout or failure after the command
+starts may leave the tag changed; the error says when the write was not verified.
+Read its actual state before deciding whether to try again. Normal `startRead`,
+`startWrite` and marker-based `startInitialize` never trigger formatting.
 
 ## Optional foreground tag handling
 
@@ -499,8 +562,8 @@ Writes have no rollback: timeout, cancellation, lost contact, or failed
 verification can leave changed, partial, or empty content. `recoverable` does
 not guarantee the previous contents survived.
 
-Sfiora does not upload tag contents, format or permanently lock tags, change
-passwords, clone access cards, emulate cards, or expose arbitrary APDU writes.
+Sfiora does not upload tag contents. It does not provide permanent locking,
+tag password management, access-card copying, card emulation, or arbitrary APDU writes.
 Application storage and data interpretation belong to the host.
 
 [Product overview](../../README-EN.md) ·

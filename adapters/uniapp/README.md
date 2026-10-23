@@ -489,7 +489,7 @@ iOS 的 `ios.pollingTechnologies` 默认为 `['iso14443', 'iso15693']`，必须�
 
 插件在设备上读取、处理并返回标签数据，按调用方提供的内容写入标签。它无广告、统计或推广 SDK，不向作者服务器上传标签内容，也不在宿主设备持久化标签内容；业务校验和后续存储由调用方负责。
 
-Sfiora 不提供标签格式化、永久锁定、密码修改、门禁卡复制、卡模拟或任意 APDU/私有区写入。标记与读取出的 ID 不构成身份真实性证明。
+Sfiora 的 UNI 接口不提供标签格式化、永久锁定、标签密码管理、门禁卡复制、卡模拟或任意 APDU/私有区写入。标记与读取出的 ID 不构成身份真实性证明。
 
 [源码与问题反馈](https://github.com/sandroxy/sfiora) · [版本记录](https://github.com/sandroxy/sfiora/blob/main/CHANGELOG.md) · [Apache License 2.0](https://github.com/sandroxy/sfiora/blob/main/LICENSE)
 

@@ -5,14 +5,17 @@ import android.nfc.FormatException;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.TagLostException;
+import android.nfc.tech.NdefFormatable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,7 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
 /**
- * Executes one foreground NFC read or write operation at a time.
+ * Executes one foreground NFC read, write, initialization, or format operation at a time.
  *
  * <p>Callbacks are always delivered on the Android main thread. The host must
  * call {@link #stop()} before its activity leaves the foreground and
@@ -60,10 +63,32 @@ public final class NfcClient implements AutoCloseable {
         }
     }
 
+    /** Main-thread notifications for one explicit format-and-verify operation. */
+    public interface FormatCallback {
+        /**
+         * The format command completed, but its result is not yet verified.
+         * Ask the user to remove and present the same tag again. The operation
+         * remains active and its original timeout continues to apply.
+         */
+        void onVerificationRequired();
+
+        void onSuccess(NfcFormatResult result);
+
+        void onFailure(NfcError error);
+
+        default void onStateChanged(boolean formatting) {
+        }
+    }
+
+    private static final NdefMessage EMPTY_FORMAT_MESSAGE = new NdefMessage(
+            Collections.singletonList(new NdefRecord(
+                    NdefTypeNameFormat.EMPTY, new byte[0], new byte[0])));
+
     private enum OperationKind {
         READ,
         WRITE,
-        INITIALIZE
+        INITIALIZE,
+        FORMAT
     }
 
     private static final class ActiveOperation {
@@ -77,13 +102,17 @@ public final class NfcClient implements AutoCloseable {
         private final ReadCallback readCallback;
         private final WriteCallback writeCallback;
         private final InitializationCallback initializationCallback;
+        private final FormatCallback formatCallback;
+        private byte[] formatTagId;
+        private Tag formatSourceTag;
+        private boolean requestFormatVerification;
 
         private boolean tagClaimed;
         private boolean stateReported;
         private boolean writeCommandStarted;
         private boolean writeVerified;
         private Future<?> task;
-        private AndroidNdefConnection connection;
+        private Closeable connection;
         private Runnable timeout;
         private boolean finishing;
         private boolean ioRunning;
@@ -101,7 +130,8 @@ public final class NfcClient implements AutoCloseable {
                 NdefExternalType marker,
                 ReadCallback readCallback,
                 WriteCallback writeCallback,
-                InitializationCallback initializationCallback
+                InitializationCallback initializationCallback,
+                FormatCallback formatCallback
         ) {
             this.identifier = identifier;
             this.kind = kind;
@@ -113,6 +143,7 @@ public final class NfcClient implements AutoCloseable {
             this.readCallback = readCallback;
             this.writeCallback = writeCallback;
             this.initializationCallback = initializationCallback;
+            this.formatCallback = formatCallback;
         }
     }
 
@@ -195,6 +226,7 @@ public final class NfcClient implements AutoCloseable {
                 null,
                 callback,
                 null,
+                null,
                 null
         );
         if (operation != null) {
@@ -218,6 +250,7 @@ public final class NfcClient implements AutoCloseable {
                 null,
                 null,
                 callback,
+                null,
                 null
         );
         if (operation != null) {
@@ -244,8 +277,31 @@ public final class NfcClient implements AutoCloseable {
                 marker,
                 null,
                 null,
-                callback
+                callback,
+                null
         );
+        if (operation != null) {
+            runOnMain(() -> enableReaderMode(operation));
+        }
+    }
+
+    /**
+     * Explicitly formats a tag exposed by Android as NdefFormatable, then waits
+     * for the same tag to be removed and presented again to verify NDEF.
+     * Existing NDEF tags are read and preserved without writes. Uses the shared
+     * write timeout (including verification), cancellation, and process lease.
+     * Formatting can change non-NDEF contents and access configuration; it is
+     * never performed automatically by read, write, or initialize operations.
+     */
+    public void startFormat(
+            NfcWriteConfiguration configuration,
+            FormatCallback callback
+    ) {
+        Objects.requireNonNull(configuration, "configuration is required");
+        Objects.requireNonNull(callback, "callback is required");
+        ActiveOperation operation = beginOperation(
+                OperationKind.FORMAT, null, configuration, null, null,
+                null, null, null, callback);
         if (operation != null) {
             runOnMain(() -> enableReaderMode(operation));
         }
@@ -310,7 +366,8 @@ public final class NfcClient implements AutoCloseable {
             NdefExternalType marker,
             ReadCallback readCallback,
             WriteCallback writeCallback,
-            InitializationCallback initializationCallback
+            InitializationCallback initializationCallback,
+            FormatCallback formatCallback
     ) {
         NfcError immediateError;
         ActiveOperation operation = null;
@@ -356,7 +413,8 @@ public final class NfcClient implements AutoCloseable {
                             marker,
                             readCallback,
                             writeCallback,
-                            initializationCallback
+                            initializationCallback,
+                            formatCallback
                     );
                     activeOperation = operation;
                     immediateError = null;
@@ -370,6 +428,7 @@ public final class NfcClient implements AutoCloseable {
                     readCallback,
                     writeCallback,
                     initializationCallback,
+                    formatCallback,
                     immediateError
             );
         }
@@ -462,7 +521,8 @@ public final class NfcClient implements AutoCloseable {
             if (operation == null
                     || operation.identifier != identifier
                     || operation.finishing
-                    || operation.tagClaimed) {
+                    || operation.tagClaimed
+                    || (tag != null && tag == operation.formatSourceTag)) {
                 return;
             }
             operation.tagClaimed = true;
@@ -498,6 +558,9 @@ public final class NfcClient implements AutoCloseable {
                 case WRITE:
                 case INITIALIZE:
                     performWrite(operation, tag);
+                    break;
+                case FORMAT:
+                    performFormat(operation, tag);
                     break;
                 default:
                     throw new IllegalStateException(
@@ -564,7 +627,10 @@ public final class NfcClient implements AutoCloseable {
             synchronized (stateLock) {
                 operation.ioRunning = false;
             }
-            runOnMain(() -> finishCleanupWhenReady(operation));
+            runOnMain(() -> {
+                requestFormatVerificationWhenReady(operation);
+                finishCleanupWhenReady(operation);
+            });
         }
     }
 
@@ -689,7 +755,7 @@ public final class NfcClient implements AutoCloseable {
         if (operation.readConfiguration.isDeepReadEnabled()) {
             // Android permits only one connected TagTechnology per tag. Finish
             // the NDEF phase on this worker before the snapshot's memory probes.
-            closeNdefBeforeProbe(operation, connection);
+            closeBeforeNextConnection(operation, connection);
         }
         completeWithRead(
                 operation.identifier,
@@ -810,9 +876,104 @@ public final class NfcClient implements AutoCloseable {
         }
     }
 
+    private void performFormat(ActiveOperation operation, Tag tag)
+            throws IOException, FormatException, NfcOperationException {
+        if (tag == null) {
+            throw new NfcOperationException(
+                    NfcErrorCode.UNSUPPORTED_TAG, "Android returned an empty NFC tag", true);
+        }
+        boolean verifying = operation.formatTagId != null;
+        if (verifying && !Arrays.equals(operation.formatTagId, tag.getId())) {
+            throw new NfcOperationException(NfcErrorCode.WRITE_VERIFICATION_FAILED,
+                    "A different tag was presented; the formatted tag was not verified", true);
+        }
+        AndroidNdefConnection ndef = AndroidNdefConnection.from(tag);
+        if (ndef != null) {
+            registerConnection(operation, ndef);
+            AndroidNdefConnection.ReadResult read;
+            try {
+                ndef.connect();
+                read = ndef.read();
+            } catch (IOException | FormatException error) {
+                throw new NfcOperationException(
+                        verifying ? NfcErrorCode.WRITE_VERIFICATION_FAILED : NfcErrorCode.READ_FAILED,
+                        "The NDEF tag could not be read for format verification", true, error);
+            }
+            if (verifying) {
+                if (!ndef.isWritable() || read.getConversionError() != null) {
+                    throw new NfcOperationException(NfcErrorCode.WRITE_VERIFICATION_FAILED,
+                            "The formatted tag did not expose a writable, valid NDEF message", true);
+                }
+                NdefWritePolicy.verify(EMPTY_FORMAT_MESSAGE, read.getMessage());
+                markWriteVerified(operation);
+            }
+            boolean contentVerified = read.getPlatformMessage() != null;
+            NfcNdefStatus status = ndef.isWritable() ? NfcNdefStatus.READ_WRITE : NfcNdefStatus.READ_ONLY;
+            // An absent live message does not establish the tag's contents.
+            // Preserve its NDEF access metadata without claiming verified emptiness.
+            NfcTagSnapshot snapshot = contentVerified ? snapshot(tag, ndef, status, read)
+                    : AndroidTagSnapshotFactory.create(tag,
+                            AndroidTagSnapshotFactory.NdefObservation.readError(
+                                    status, ndef.getCapacityBytes(), ndef.isWritable(),
+                                    ndef.canMakeReadOnly(), ndef.getType(), null,
+                                    "NDEF is already available, but Android returned no message; "
+                                            + "content is unverified. No format or write was issued. "
+                                            + "Remove and read the tag again to check its contents"), null);
+            NfcFormatResult result = new NfcFormatResult(
+                    verifying, contentVerified, snapshot, System.currentTimeMillis());
+            complete(operation.identifier, current -> current.formatCallback.onSuccess(result));
+            return;
+        }
+        if (verifying) {
+            throw new NfcOperationException(NfcErrorCode.WRITE_VERIFICATION_FAILED,
+                    "The tag still does not expose NDEF after formatting; no retry was performed", true);
+        }
+        NdefFormatable formatable = NdefFormatable.get(tag);
+        if (formatable == null) {
+            throw new NfcOperationException(NfcErrorCode.UNSUPPORTED_TAG,
+                    "Android does not expose NDEF formatting for this tag on this device", true);
+        }
+        byte[] id = tag.getId();
+        if (id == null || id.length == 0) {
+            throw new NfcOperationException(NfcErrorCode.UNSUPPORTED_TAG,
+                    "Formatting requires a tag ID to match the verification scan", false);
+        }
+        registerConnection(operation, formatable);
+        formatable.connect();
+        markWriteCommandStarted(operation);
+        formatable.format(AndroidNdefCodec.toPlatform(EMPTY_FORMAT_MESSAGE));
+        closeBeforeNextConnection(operation, formatable);
+        synchronized (stateLock) {
+            if (activeOperation != operation || operation.finishing) {
+                return;
+            }
+            operation.formatTagId = id.clone();
+            operation.formatSourceTag = tag;
+            operation.requestFormatVerification = true;
+        }
+    }
+
+    private void requestFormatVerificationWhenReady(ActiveOperation operation) {
+        synchronized (stateLock) {
+            if (activeOperation != operation || operation.finishing
+                    || !operation.requestFormatVerification) {
+                return;
+            }
+            operation.requestFormatVerification = false;
+            operation.tagClaimed = false;
+        }
+        try {
+            operation.formatCallback.onVerificationRequired();
+        } catch (RuntimeException error) {
+            completeWithFailure(operation.identifier, new NfcError(
+                    NfcErrorCode.INTERNAL_ERROR,
+                    "The host could not request the NDEF verification scan", false, error));
+        }
+    }
+
     private void registerConnection(
             ActiveOperation operation,
-            AndroidNdefConnection connection
+            Closeable connection
     ) throws IOException {
         synchronized (stateLock) {
             if (activeOperation != operation || operation.finishing) {
@@ -823,9 +984,9 @@ public final class NfcClient implements AutoCloseable {
         }
     }
 
-    private void closeNdefBeforeProbe(
+    private void closeBeforeNextConnection(
             ActiveOperation operation,
-            AndroidNdefConnection connection
+            Closeable connection
     ) throws IOException {
         // A failed close must not be followed by another technology's connect.
         // Keep this connection registered while close blocks, so cancellation
@@ -838,12 +999,12 @@ public final class NfcClient implements AutoCloseable {
                 throw new IOException("The NFC operation ended during technology switching");
             }
             // With no cancellation in progress, no queued closer can still own
-            // this connection. Do not close an old NDEF object during a probe.
+            // this connection. Do not close it during a later probe or rediscovery.
             operation.connection = null;
         }
     }
 
-    private static void closeConnection(AndroidNdefConnection connection) {
+    private static void closeConnection(Closeable connection) {
         if (connection == null) {
             return;
         }
@@ -938,6 +1099,9 @@ public final class NfcClient implements AutoCloseable {
                     break;
                 case INITIALIZE:
                     operation.initializationCallback.onFailure(deliveredError);
+                    break;
+                case FORMAT:
+                    operation.formatCallback.onFailure(deliveredError);
                     break;
                 default:
                     throw new IllegalStateException(
@@ -1057,7 +1221,7 @@ public final class NfcClient implements AutoCloseable {
     }
 
     private void cancelIo(ActiveOperation operation) {
-        AndroidNdefConnection connection;
+        Closeable connection;
         Future<?> task;
         synchronized (stateLock) {
             connection = operation.ioRunning ? operation.connection : null;
@@ -1154,6 +1318,7 @@ public final class NfcClient implements AutoCloseable {
             ReadCallback readCallback,
             WriteCallback writeCallback,
             InitializationCallback initializationCallback,
+            FormatCallback formatCallback,
             NfcError error
     ) {
         runOnMain(() -> {
@@ -1167,6 +1332,9 @@ public final class NfcClient implements AutoCloseable {
                         break;
                     case INITIALIZE:
                         initializationCallback.onFailure(error);
+                        break;
+                    case FORMAT:
+                        formatCallback.onFailure(error);
                         break;
                     default:
                         throw new IllegalStateException(
@@ -1193,6 +1361,9 @@ public final class NfcClient implements AutoCloseable {
                     break;
                 case INITIALIZE:
                     operation.initializationCallback.onStateChanged(active);
+                    break;
+                case FORMAT:
+                    operation.formatCallback.onStateChanged(active);
                     break;
                 default:
                     throw new IllegalStateException(

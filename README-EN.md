@@ -22,6 +22,10 @@ NFC operations without depending on a login, identity, or other business model.
   cancellation, timeouts, state queries, and structured errors.
 - A headless Android core with optional managed panels; system NFC panels on iOS.
 
+The Android headless core also offers explicit
+[NDEF formatting with readback verification](native/android/README.md#explicit-ndef-formatting).
+Support depends on the device and tag.
+
 ## Platforms and distribution
 
 | Platform | Recommended channel | Integration |
@@ -70,9 +74,9 @@ assumed empty. Each platform guide covers record formats, results, and examples.
 
 Writes have no transaction rollback. After cancellation, timeout, failed
 verification, or lost contact, read again to establish the actual contents.
-A marker provides neither locking nor authentication. Sfiora does not format tags, permanently lock them,
-change passwords, clone access cards, emulate cards, or expose arbitrary
-APDU/private-block writes.
+A marker provides neither locking nor authentication. Regular operations never
+format tags automatically. Sfiora does not provide permanent locking, tag password
+management, access-card copying, card emulation, or arbitrary APDU/private-block writes.
 
 ## Sessions and errors
 

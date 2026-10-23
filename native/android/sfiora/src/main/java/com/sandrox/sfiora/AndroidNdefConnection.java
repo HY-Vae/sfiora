@@ -4,9 +4,10 @@ import android.nfc.FormatException;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
 
+import java.io.Closeable;
 import java.io.IOException;
 
-final class AndroidNdefConnection implements AutoCloseable {
+final class AndroidNdefConnection implements Closeable {
     static final class ReadResult {
         private final android.nfc.NdefMessage platformMessage;
         private final NdefMessage message;

@@ -9,6 +9,9 @@ import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.os.Looper;
 
+import com.sandrox.sfiora.NfcCapabilities;
+import com.sandrox.sfiora.NfcFeature;
+
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
@@ -18,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -141,6 +145,21 @@ public class SfioraBridgeLifecycleTest {
         assertState(host.get(), "acquireForegroundDispatch", "[\"screen\"]", "active");
         call(null, "getCapabilities", "[]");
         assertEquals(1, host.get().lifecycle.getObserverCount());
+    }
+
+    @Test public void capabilitiesExposeOnlyFeaturesAvailableThroughTheBridge() throws Exception {
+        assertTrue(NfcCapabilities.from(host.get()).getFeatures().contains(NfcFeature.NDEF_FORMAT));
+        JSONObject result = call(null, "getCapabilities", "[]");
+        assertTrue(result.getBoolean("ok"));
+        JSONObject capabilities = result.getJSONObject("data");
+        List<String> expected = List.of("discover", "ndef", "ndefWrite", "ndefInitialize",
+                "readOnlyMifareUltralightProbe", "readOnlyType2Probe",
+                "readOnlyMifareClassicDefaultKeyProbe");
+        assertEquals(expected, SfioraBridgeRuntime.getCapabilities(host.get()).get("features"));
+        assertEquals(new JSONArray(expected).toString(), capabilities.getJSONArray("features").toString());
+        assertEquals("android", capabilities.getString("platform"));
+        assertTrue(capabilities.getBoolean("supported"));
+        assertTrue(capabilities.getBoolean("enabled"));
     }
 
     @Test public void destroyedHostCannotBeRebound() throws Exception {

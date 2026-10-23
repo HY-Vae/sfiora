@@ -34,6 +34,7 @@ public final class NfcModelsTest {
         assertFalse(capabilities.isEnabled());
         assertFalse(capabilities.isReaderModeSupported());
         assertTrue(capabilities.getFeatures().contains(NfcFeature.NDEF_INITIALIZE));
+        assertTrue(capabilities.getFeatures().contains(NfcFeature.NDEF_FORMAT));
         assertTrue(
                 ((List<?>) capabilities.toMap().get("features"))
                         .contains("readOnlyType2Probe")

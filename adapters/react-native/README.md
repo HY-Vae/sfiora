@@ -503,8 +503,9 @@ errors, check the usage description, signed entitlement, and signing profile.
 
 ## Privacy and support
 
-Sfiora does not format tags, change passwords, permanently lock tags, clone
-access cards, emulate cards, or expose arbitrary APDU/private-block writes.
+The React Native API does not provide tag formatting, permanent locking,
+tag password management, access-card copying, card emulation, or arbitrary
+APDU/private-block writes.
 Tag technologies and read-only details do not imply support for all operations
 on that technology.
 
