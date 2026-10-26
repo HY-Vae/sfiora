@@ -6,6 +6,11 @@ export type {
   NfcAndroidScanOptions,
   NfcByteValue,
   NfcCapabilities,
+  NfcFormatOptions,
+  NfcFormatMessages,
+  NfcFormatResult,
+  NfcFormattedResult,
+  NfcFormatPreservedResult,
   NfcForegroundDispatchState,
   NfcPresentationState,
   NfcWaitForPresentationEndOptions,
@@ -43,6 +48,8 @@ export type {
 
 import type {
   NfcCapabilities,
+  NfcFormatOptions,
+  NfcFormatResult,
   NfcForegroundDispatchState,
   NfcPresentationState,
   NfcWaitForPresentationEndOptions,
@@ -77,7 +84,14 @@ export function initializeNdef(
   marker: NfcNdefExternalTypeMarker,
   options?: NfcWriteOptions
 ): Promise<NfcNdefInitializationResult>;
+/** Explicit Android NDEF formatting with a managed panel and live verification.
+ * Existing NDEF tags are preserved without writes; inspect action and verified.
+ * Cancellation does not undo an issued format command. iOS rejects NFC_UNSUPPORTED.
+ */
+export function formatNdef(options?: NfcFormatOptions): Promise<NfcFormatResult>;
+/** Cancels writing, initialization or formatting; does not undo tag changes. */
 export function cancelWrite(): Promise<void>;
+/** Includes writing, initialization and formatting through verification. */
 export function isWriting(): Promise<boolean>;
 
 export interface NfcWaitForIdleOptions {

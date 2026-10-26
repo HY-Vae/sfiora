@@ -5,6 +5,9 @@ messages containing an application marker on Android and iOS. The package
 includes the native Sfiora runtimes and supports React Native's legacy
 architecture and TurboModules.
 
+On Android, you can also explicitly format compatible tags for NDEF with a
+managed panel and verification after presenting the tag again.
+
 ## Requirements
 
 The package requires Node.js 18+ and React Native 0.76+. The native Sfiora cores
@@ -98,10 +101,11 @@ Every method returns a Promise. Request fields and result types are defined in
 | `startScan` | Read one tag snapshot |
 | `writeNdef` | Replace and verify a complete NDEF message |
 | `initializeNdef` | Preserve matching content or write and verify the initial message |
+| `formatNdef` | Explicitly prepare and verify compatible tags for NDEF on Android |
 | `cancelScan` | Request cancellation of the current scan |
-| `cancelWrite` | Request cancellation of a write or initialization |
+| `cancelWrite` | Request cancellation of writing, initialization, or formatting |
 | `isScanning` | Query native read activity |
-| `isWriting` | Query native write activity |
+| `isWriting` | Query native writing, initialization, or formatting activity |
 | `waitForIdle` | Wait for this bridge instance to become idle, with a deadline |
 | `acquireForegroundDispatch` / `releaseForegroundDispatch` | Request/release Android foreground tag handling for one owner |
 | `getForegroundDispatchState` | Query native foreground dispatch state and diagnostics |
@@ -244,12 +248,73 @@ authentication: another writer can replace its data, and copying the marker
 does not prove an identity. Application validation, authorization, encryption,
 and business data formats remain with the host.
 
+## Explicit NDEF formatting
+
+`formatNdef` uses the Android managed panel to prepare compatible non-NDEF tags.
+It does not require a message or a business marker. Check for `ndefFormat` in
+`getCapabilities().features`; this identifies the available operation, not a
+guarantee that a particular tag can be formatted. iOS does not advertise this
+feature and rejects `formatNdef` with `NFC_UNSUPPORTED` without starting a session.
+
+Explain the effects before the user chooses the format action. Formatting may
+replace non-NDEF data and change access settings. It is not a factory reset,
+does not remove permanent locks, and cannot prepare every tag. Reading, writing,
+and marker-based initialization never invoke it automatically.
+
+```ts
+import * as sfiora from '@sandrox/sfiora';
+
+export async function formatTag() {
+  const capabilities = await sfiora.getCapabilities();
+  if (!capabilities.supported || !capabilities.enabled
+      || !capabilities.features.includes('ndefFormat')) {
+    throw new Error('NDEF formatting is unavailable or NFC is disabled.');
+  }
+  try {
+    return await sfiora.formatNdef({ timeoutMilliseconds: 60000 });
+  } catch (error) {
+    if (error instanceof sfiora.SfioraError && error.code === 'USER_CANCELLED') {
+      return null;
+    }
+    throw error;
+  }
+}
+```
+
+The panel opens immediately. After the format command, it asks the user to
+remove and present the same tag again. The Promise remains pending and
+`isWriting()` remains true during this verification. The timeout covers both
+presentations; it does not restart after the first tap. No JS listener or second
+call to `formatNdef` is needed.
+
+Inspect both `action` and `verified` in `NfcFormatResult`:
+
+- `formatted` always has `verified: true`: Android rediscovered the same tag ID,
+  confirmed writable NDEF, and read back the expected empty record.
+- `preserved` means NDEF was already available and nothing was formatted or
+  written. `verified: true` means live content was read; it does not mean the
+  tag is writable. Read-only tags remain read-only.
+- `preserved` with `verified: false` means Android returned no live message.
+  The panel shows an information notice. Read the tag to check its contents;
+  another format attempt is not a repair for this result.
+
+Cancellation, tag loss, or timeout after the format command may leave a changed
+tag without a verified result. Inspect the error; cancellation does not roll
+back tag changes. Use the existing idle and panel-completion waits before
+starting another operation.
+
+Formatting accepts `timeoutMilliseconds` from 1000 to 60000, default 30000,
+and an optional complete `NfcFormatMessages` object. Omitting `messages` uses
+the native localized copy, including the second-presentation instruction and
+preserved-content notices. Unknown options and incomplete message objects are
+rejected on Android with `INVALID_OPTIONS` before a panel or session opens.
+
 ## Cancellation and session state
 
 ```ts
 export async function cancelCurrentOperation() {
   await sfiora.cancelScan();
-  await sfiora.cancelWrite(); // Also cancels initializeNdef.
+  await sfiora.cancelWrite(); // Also cancels initialization and formatting.
 }
 
 export async function isNfcBusy() {
@@ -291,8 +356,9 @@ query fails, display the error rather than assuming the session is idle.
 When the screen owning an operation loses focus or unmounts, request its
 cancellation and stop updating that screen from late results. Navigation can
 leave the native Activity active, so app lifecycle cleanup alone does not
-replace screen cleanup. Keep the app foregrounded and the tag still until the
-operation finishes.
+replace screen cleanup. Keep the app foregrounded and hold the tag still during
+each read or write. Follow the panel's instructions to remove and present it
+again when formatting requires verification.
 
 ## Optional foreground tag handling
 
@@ -438,7 +504,7 @@ use `true` to restore them; continue checking device availability and coordinati
 other screens. After `false`, refresh `isScanning()`, `isWriting()`, and Android
 `getPresentationState()` before enabling another action. A failed query is not
 an idle state. The same observation pattern applies to writes, initialization,
-and cancellation, without replacing the original operation result.
+formatting, and cancellation, without replacing the original operation result.
 
 Do not start a replacement operation or cancel a completed operation merely to
 hide its panel. Replacing an operation on the same controller or tearing down

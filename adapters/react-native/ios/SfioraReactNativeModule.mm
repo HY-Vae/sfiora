@@ -222,6 +222,20 @@ RCT_EXPORT_METHOD(initializeNdef
         }];
 }
 
+RCT_EXPORT_METHOD(formatNdef
+                  : (__unused NSDictionary *)options
+                  resolve
+                  : (__unused RCTPromiseResolveBlock)resolve
+                  reject
+                  : (RCTPromiseRejectBlock)reject)
+{
+    [self reject:reject withPayload:@{
+        @"code": @"NFC_UNSUPPORTED",
+        @"message": @"NDEF formatting is not supported by Sfiora on iOS",
+        @"recoverable": @NO
+    }];
+}
+
 RCT_EXPORT_METHOD(cancelWrite
                   : (RCTPromiseResolveBlock)resolve
                   reject

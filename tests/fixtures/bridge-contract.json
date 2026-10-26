@@ -143,5 +143,59 @@
       ]
     },
     "warnings": []
+  },
+  "bridgeFormatOptions": {
+    "timeoutMilliseconds": 60000
+  },
+  "bridgeFormatResult": {
+    "schemaVersion": 1,
+    "platform": "android",
+    "operation": "formatNdef",
+    "action": "formatted",
+    "verified": true,
+    "completedAtEpochMs": 0,
+    "tag": {
+      "schemaVersion": 1,
+      "platform": "android",
+      "discoveredAtEpochMs": 0,
+      "id": {
+        "hex": "01020304",
+        "base64": "AQIDBA==",
+        "length": 4
+      },
+      "technologies": [
+        "nfcA",
+        "ndef"
+      ],
+      "nativeTechnologies": [
+        "android.nfc.tech.NfcA",
+        "android.nfc.tech.Ndef"
+      ],
+      "platformDetails": {
+        "android": {}
+      },
+      "ndef": {
+        "status": "read",
+        "writable": true,
+        "maxSize": 716,
+        "messageHex": "D8000000",
+        "messageBase64": "2AAAAA==",
+        "recordCount": 1,
+        "records": [
+          {
+            "index": 0,
+            "tnf": 0,
+            "tnfName": "empty",
+            "typeHex": "",
+            "typeBase64": "",
+            "idHex": "",
+            "idBase64": "",
+            "payloadHex": "",
+            "payloadBase64": ""
+          }
+        ]
+      },
+      "warnings": []
+    }
   }
 }

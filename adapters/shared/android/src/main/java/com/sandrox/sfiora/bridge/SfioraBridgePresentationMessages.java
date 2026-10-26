@@ -47,7 +47,50 @@ final class SfioraBridgePresentationMessages {
             "verificationFailed"
     );
 
+    private static final Set<String> FORMAT_KEYS = setOf(
+            "title",
+            "instruction",
+            "cancel",
+            "done",
+            "success",
+            "verificationRequired",
+            "preserved",
+            "preservedUnverified",
+            "failureTitle",
+            "timeout",
+            "nfcDisabled",
+            "nfcUnsupported",
+            "tagLost",
+            "unsupportedTag",
+            "formatFailed",
+            "verificationFailed"
+    );
+
     private SfioraBridgePresentationMessages() {}
+
+    static NfcPresentationMessages.Format parseFormat(Object raw)
+            throws SfioraBridgeOptionsException {
+        Map<?, ?> messages = objectMap(raw, "messages");
+        validateExactKeys(messages, FORMAT_KEYS, "messages");
+        return new NfcPresentationMessages.Format(
+                text(messages, "title"),
+                text(messages, "instruction"),
+                text(messages, "cancel"),
+                text(messages, "done"),
+                text(messages, "success"),
+                text(messages, "verificationRequired"),
+                text(messages, "preserved"),
+                text(messages, "preservedUnverified"),
+                text(messages, "failureTitle"),
+                text(messages, "timeout"),
+                text(messages, "nfcDisabled"),
+                text(messages, "nfcUnsupported"),
+                text(messages, "tagLost"),
+                text(messages, "unsupportedTag"),
+                text(messages, "formatFailed"),
+                text(messages, "verificationFailed")
+        );
+    }
 
     static NfcPresentationMessages.Scan parseScan(Object raw)
             throws SfioraBridgeOptionsException {

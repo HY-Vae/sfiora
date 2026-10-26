@@ -63,6 +63,11 @@ public final class SfioraModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void formatNdef(ReadableMap options, Promise promise) {
+        delegate.formatNdef(options, promise);
+    }
+
+    @ReactMethod
     public void cancelWrite(Promise promise) {
         delegate.cancelWrite(promise);
     }

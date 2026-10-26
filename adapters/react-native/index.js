@@ -184,6 +184,19 @@ function initializeNdef(message, marker, options = {}) {
   return invoke('initializeNdef', message, marker, options);
 }
 
+function formatNdef(options = {}) {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    return Promise.reject(
+      new SfioraError({
+        code: 'INVALID_OPTIONS',
+        message: 'formatNdef options must be an object',
+        recoverable: true,
+      })
+    );
+  }
+  return invoke('formatNdef', options);
+}
+
 function cancelWrite() {
   return invoke('cancelWrite');
 }
@@ -244,6 +257,7 @@ module.exports = {
   cancelScan,
   cancelWrite,
   getCapabilities,
+  formatNdef,
   isScanning,
   isWriting,
   initializeNdef,

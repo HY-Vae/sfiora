@@ -92,6 +92,31 @@ export interface NfcWriteOptions {
   messages?: NfcWriteMessages;
 }
 
+export interface NfcFormatOptions {
+  /** Integer 1000–60000; default 30000. Includes both tag presentations. */
+  timeoutMilliseconds?: number;
+  messages?: NfcFormatMessages;
+}
+
+export interface NfcFormatMessages {
+  title: string;
+  instruction: string;
+  cancel: string;
+  done: string;
+  success: string;
+  verificationRequired: string;
+  preserved: string;
+  preservedUnverified: string;
+  failureTitle: string;
+  timeout: string;
+  nfcDisabled: string;
+  nfcUnsupported: string;
+  tagLost: string;
+  unsupportedTag: string;
+  formatFailed: string;
+  verificationFailed: string;
+}
+
 export interface NfcWriteMessages {
   title: string;
   instruction: string;
@@ -262,6 +287,28 @@ export interface NfcWriteResult {
   messageBase64: string;
   tag: NfcTagSnapshot;
 }
+
+interface NfcFormatResultBase {
+  schemaVersion: 1;
+  platform: 'android';
+  operation: 'formatNdef';
+  completedAtEpochMs: number;
+  tag: NfcTagSnapshot;
+}
+
+export interface NfcFormattedResult extends NfcFormatResultBase {
+  action: 'formatted';
+  /** The same tag was rediscovered with writable NDEF and the expected empty message. */
+  verified: true;
+}
+
+export interface NfcFormatPreservedResult extends NfcFormatResultBase {
+  action: 'preserved';
+  /** True when live content was read. Preservation does not imply writability. */
+  verified: boolean;
+}
+
+export type NfcFormatResult = NfcFormattedResult | NfcFormatPreservedResult;
 
 export interface NfcNdefInitializationMarkerResult
   extends NfcNdefExternalTypeMarker {

@@ -48,6 +48,8 @@ const bridgeInitializationResult = {
 };
 
 test('shared bridge fixtures match the public JSON Schema', () => {
+  assertSchemaValue(contractFixtures.bridgeFormatOptions, 'NfcFormatOptions', 'bridgeFormatOptions', bridgeSchema);
+  assertSchemaValue(contractFixtures.bridgeFormatResult, 'NfcFormatResult', 'bridgeFormatResult', bridgeSchema);
   assertSchemaValue(
     bridgeSnapshot,
     'NfcTagSnapshot',
@@ -85,6 +87,58 @@ test('shared bridge fixtures match the public JSON Schema', () => {
     bridgeSchema
   );
 });
+
+test('format results distinguish verified formatting from preserved unconfirmed content', () => {
+  const formatted = contractFixtures.bridgeFormatResult;
+  for (const verified of [true, false]) {
+    assertSchemaValue({ ...formatted, action: 'preserved', verified },
+      'NfcFormatResult', 'preserved', bridgeSchema);
+  }
+  for (const invalid of [
+    { ...formatted, verified: false },
+    { ...formatted, platform: 'ios' },
+    { ...formatted, action: 'initialized' },
+  ]) {
+    assert.throws(() => assertSchemaValue(invalid, 'NfcFormatResult', 'invalid result', bridgeSchema));
+  }
+  for (const invalid of [{ timeoutMilliseconds: 999 }, { timeoutMilliseconds: 60001 },
+    { timeoutMilliseconds: 1000.5 }, { android: { presentation: 'none' } }, { messages: {} }]) {
+    assert.throws(() => assertSchemaValue(invalid, 'NfcFormatOptions', 'invalid options', bridgeSchema));
+  }
+});
+
+for (const architecture of ['legacy', 'turbo']) {
+  test(`React Native ${architecture} formatting preserves result semantics and native errors`, async () => {
+    const calls = [];
+    let nextResult = contractFixtures.bridgeFormatResult;
+    let nextError;
+    const native = { async formatNdef(options) {
+      calls.push(options);
+      if (nextError) throw nextError;
+      return nextResult;
+    } };
+    const api = await loadCommonJs('adapters/react-native/index.js', () => architecture === 'turbo'
+      ? { NativeModules: {}, TurboModuleRegistry: { get: () => native } }
+      : { NativeModules: { Sfiora: native } });
+    assert.deepEqual(await api.formatNdef(), nextResult);
+    assert.equal(Object.keys(calls[0]).length, 0);
+    const options = contractFixtures.bridgeFormatOptions;
+    assert.deepEqual(await api.formatNdef(options), nextResult);
+    assert.equal(calls[1], options);
+    nextResult = { ...nextResult, action: 'preserved', verified: false };
+    assert.equal((await api.formatNdef(options)).verified, false);
+    for (const invalid of [null, [], 'format', 1, true]) {
+      await assert.rejects(api.formatNdef(invalid), error =>
+        error instanceof api.SfioraError && error.code === 'INVALID_OPTIONS');
+    }
+    assert.equal(calls.length, 3);
+    for (const code of ['NFC_UNSUPPORTED', 'USER_CANCELLED', 'WRITE_TIMEOUT', 'WRITE_VERIFICATION_FAILED']) {
+      nextError = { code, message: 'Native formatting failed', userInfo: { code, recoverable: false } };
+      await assert.rejects(api.formatNdef(), error => error instanceof api.SfioraError
+        && error.code === code && error.message === nextError.message && error.recoverable === false);
+    }
+  });
+}
 
 async function loadCommonJs(relativePath, requireModule, globals = {}) {
   const absolutePath = resolve(packageRoot, relativePath);
@@ -193,6 +247,7 @@ test('React Native wrapper exposes the frozen methods and forwards options', asy
       'cancelScan',
       'cancelWrite',
       'getCapabilities',
+      'formatNdef',
       'initializeNdef',
       'isScanning',
       'isWriting',

@@ -21,6 +21,7 @@ export interface Spec extends TurboModule {
     marker: UnsafeObject,
     options: UnsafeObject
   ): Promise<UnsafeObject>;
+  formatNdef(options: UnsafeObject): Promise<UnsafeObject>;
   cancelWrite(): Promise<void>;
   isWriting(): Promise<boolean>;
 }

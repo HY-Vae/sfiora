@@ -10,13 +10,16 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.UiThreadUtil;
 import com.facebook.react.common.LifecycleState;
 import com.sandrox.sfiora.NdefExternalType;
+import com.sandrox.sfiora.NfcCapabilities;
 import com.sandrox.sfiora.NfcClient;
 import com.sandrox.sfiora.NfcError;
 import com.sandrox.sfiora.NfcErrorCode;
+import com.sandrox.sfiora.NfcFormatResult;
 import com.sandrox.sfiora.NfcInitializationResult;
 import com.sandrox.sfiora.NfcTagSnapshot;
 import com.sandrox.sfiora.NfcWriteResult;
 import com.sandrox.sfiora.bridge.SfioraBridgeOptions;
+import com.sandrox.sfiora.bridge.SfioraBridgeFormatOptions;
 import com.sandrox.sfiora.bridge.SfioraBridgeRuntime;
 import com.sandrox.sfiora.bridge.SfioraBridgeOptionsException;
 import com.sandrox.sfiora.bridge.SfioraBridgeWriteRequest;
@@ -48,7 +51,7 @@ final class SfioraModuleDelegate implements LifecycleEventListener {
                 return;
             }
             promise.resolve(Arguments.makeNativeMap(
-                    SfioraBridgeRuntime.getCapabilities(reactContext)));
+                    NfcCapabilities.from(reactContext).toMap()));
         });
     }
 
@@ -275,6 +278,49 @@ final class SfioraModuleDelegate implements LifecycleEventListener {
             } catch (IllegalArgumentException error) {
                 reject(promise, invalidOptions(error));
             }
+        });
+    }
+
+    void formatNdef(ReadableMap options, Promise promise) {
+        UiThreadUtil.runOnUiThread(() -> {
+            if (invalidated) {
+                reject(promise, internalError("The NFC bridge has been invalidated"));
+                return;
+            }
+            final SfioraBridgeFormatOptions request;
+            try {
+                request = SfioraBridgeFormatOptions.parse(
+                        options == null ? null : options.toHashMap());
+            } catch (SfioraBridgeOptionsException error) {
+                reject(promise, invalidOptions(error));
+                return;
+            }
+            Activity activity = availableActivity();
+            if (activity == null) {
+                reject(promise, internalError("The host Activity is not available"));
+                return;
+            }
+            if (!ensureControllersFor(activity)) {
+                reject(promise, new NfcError(NfcErrorCode.WRITE_BUSY,
+                        "The previous NFC session is still closing", true));
+                return;
+            }
+            writeController.startFormat(
+                    request.getWriteConfiguration(),
+                    request.getMessages(),
+                    new NfcClient.FormatCallback() {
+                        @Override public void onVerificationRequired() {
+                            // The managed panel requests rediscovery; keep the Promise pending.
+                        }
+
+                        @Override public void onSuccess(NfcFormatResult result) {
+                            promise.resolve(Arguments.makeNativeMap(result.toMap()));
+                        }
+
+                        @Override public void onFailure(NfcError error) {
+                            reject(promise, error);
+                        }
+                    });
         });
     }
 

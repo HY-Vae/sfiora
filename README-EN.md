@@ -22,9 +22,9 @@ NFC operations without depending on a login, identity, or other business model.
   cancellation, timeouts, state queries, and structured errors.
 - A headless Android core with optional managed panels; system NFC panels on iOS.
 
-The native Android SDK also offers explicit
-[NDEF formatting with readback verification](native/android/README.md#explicit-ndef-formatting).
-Use the headless core or a managed panel. Support depends on the device and tag.
+Android also offers explicit
+[NDEF formatting with readback verification](adapters/react-native/README.md#explicit-ndef-formatting),
+both natively and through React Native. Support depends on the device and tag.
 
 ## Platforms and distribution
 

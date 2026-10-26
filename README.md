@@ -15,7 +15,7 @@ Sfiora 是面向 Android、iOS、React Native 和 UniApp 的通用 NFC 读写库
 - 进程内读写互斥，提供取消、超时、状态查询和结构化错误。
 - Android 可选择原生无界面核心或附带操作面板；iOS 使用系统 NFC 面板。
 
-Android 原生还提供 [NDEF 格式化与回读验证](native/android/README.md#explicit-ndef-formatting)，可使用无界面核心或操作面板。此能力由应用主动调用，支持范围取决于手机与标签。
+Android 原生和 React Native 的 Android 端还提供 [NDEF 格式化与回读验证](adapters/react-native/README.md#explicit-ndef-formatting)。此能力由应用主动调用，支持范围取决于手机与标签。
 
 ## 支持平台与分发
 

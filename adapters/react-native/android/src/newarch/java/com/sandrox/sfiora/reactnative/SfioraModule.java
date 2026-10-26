@@ -61,6 +61,11 @@ public final class SfioraModule extends NativeSfioraSpec {
     }
 
     @Override
+    public void formatNdef(ReadableMap options, Promise promise) {
+        delegate.formatNdef(options, promise);
+    }
+
+    @Override
     public void cancelWrite(Promise promise) {
         delegate.cancelWrite(promise);
     }

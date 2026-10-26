@@ -10,6 +10,7 @@
     "isScanning",
     "writeNdef",
     "initializeNdef",
+    "formatNdef",
     "cancelWrite",
     "isWriting",
     "acquireForegroundDispatch",
@@ -54,6 +55,12 @@
     },
     {
       "$ref": "#/$defs/NfcWaitForPresentationEndOptions"
+    },
+    {
+      "$ref": "#/$defs/NfcFormatOptions"
+    },
+    {
+      "$ref": "#/$defs/NfcFormatResult"
     }
   ],
   "$defs": {
@@ -920,6 +927,145 @@
       "minLength": 1,
       "maxLength": 128,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(?![\\s\\S])"
+    },
+    "NfcFormatOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeoutMilliseconds": {
+          "default": 30000,
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "messages": {
+          "$ref": "#/$defs/NfcFormatMessages"
+        }
+      }
+    },
+    "NfcFormatMessages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "instruction",
+        "cancel",
+        "done",
+        "success",
+        "verificationRequired",
+        "preserved",
+        "preservedUnverified",
+        "failureTitle",
+        "timeout",
+        "nfcDisabled",
+        "nfcUnsupported",
+        "tagLost",
+        "unsupportedTag",
+        "formatFailed",
+        "verificationFailed"
+      ],
+      "properties": {
+        "title": { "$ref": "#/$defs/PresentationMessage" },
+        "instruction": { "$ref": "#/$defs/PresentationMessage" },
+        "cancel": { "$ref": "#/$defs/PresentationMessage" },
+        "done": { "$ref": "#/$defs/PresentationMessage" },
+        "success": { "$ref": "#/$defs/PresentationMessage" },
+        "verificationRequired": { "$ref": "#/$defs/PresentationMessage" },
+        "preserved": { "$ref": "#/$defs/PresentationMessage" },
+        "preservedUnverified": { "$ref": "#/$defs/PresentationMessage" },
+        "failureTitle": { "$ref": "#/$defs/PresentationMessage" },
+        "timeout": { "$ref": "#/$defs/PresentationMessage" },
+        "nfcDisabled": { "$ref": "#/$defs/PresentationMessage" },
+        "nfcUnsupported": { "$ref": "#/$defs/PresentationMessage" },
+        "tagLost": { "$ref": "#/$defs/PresentationMessage" },
+        "unsupportedTag": { "$ref": "#/$defs/PresentationMessage" },
+        "formatFailed": { "$ref": "#/$defs/PresentationMessage" },
+        "verificationFailed": { "$ref": "#/$defs/PresentationMessage" }
+      }
+    },
+    "NfcFormattedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "platform",
+        "operation",
+        "completedAtEpochMs",
+        "action",
+        "verified",
+        "tag"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "platform": {
+          "const": "android"
+        },
+        "operation": {
+          "const": "formatNdef"
+        },
+        "completedAtEpochMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "const": "formatted"
+        },
+        "verified": {
+          "const": true
+        },
+        "tag": {
+          "$ref": "#/$defs/NfcTagSnapshot"
+        }
+      }
+    },
+    "NfcFormatPreservedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "platform",
+        "operation",
+        "completedAtEpochMs",
+        "action",
+        "verified",
+        "tag"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "platform": {
+          "const": "android"
+        },
+        "operation": {
+          "const": "formatNdef"
+        },
+        "completedAtEpochMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "const": "preserved"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "tag": {
+          "$ref": "#/$defs/NfcTagSnapshot"
+        }
+      }
+    },
+    "NfcFormatResult": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NfcFormattedResult"
+        },
+        {
+          "$ref": "#/$defs/NfcFormatPreservedResult"
+        }
+      ]
     }
   }
 }

@@ -80,7 +80,7 @@ public class SfioraModuleDelegateTest {
         assertEquals(false, state.value);
     }
 
-    @Test public void capabilitiesExcludeOperationsWithoutBridgeEntryPoints() throws Exception {
+    @Test public void capabilitiesIncludeFormattingWithoutStartingReaderMode() throws Exception {
         Reply capabilities = reply();
         fromNativeModules(() -> delegate.getCapabilities(capabilities.promise));
         await(() -> capabilities.calls == 1);
@@ -89,7 +89,7 @@ public class SfioraModuleDelegateTest {
         List<?> features = (List<?>) MapTransport.lastValue.get("features");
         assertTrue(features.contains("ndefWrite"));
         assertTrue(features.contains("ndefInitialize"));
-        assertFalse(features.contains("ndefFormat"));
+        assertTrue(features.contains("ndefFormat"));
         assertFalse(adapter.isInReaderMode());
     }
 
@@ -124,12 +124,13 @@ public class SfioraModuleDelegateTest {
     }
 
     @Test public void invalidationIsOrderedWithAllQueuedEntryPoints() throws Exception {
-        Reply scan = reply(), write = reply(), initialize = reply(), capabilities = reply();
+        Reply scan = reply(), write = reply(), initialize = reply(), format = reply(), capabilities = reply();
         fromNativeModules(() -> {
             delegate.invalidate();
             delegate.startScan(null, scan.promise);
             delegate.writeNdef(null, null, write.promise);
             delegate.initializeNdef(null, null, null, initialize.promise);
+            delegate.formatNdef(null, format.promise);
             delegate.getCapabilities(capabilities.promise);
         });
         for (Reply value : replies) assertEquals(0, value.calls);
