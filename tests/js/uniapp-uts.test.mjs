@@ -38,6 +38,7 @@ test('UTS JS transport preserves all public native methods, arguments and cancel
   assert.equal(await api.cancelScan(), undefined);
   assert.deepEqual(await api.writeNdef(message, options), {method: 'writeNdef'});
   assert.deepEqual(await api.initializeNdef(message, marker, options), {method: 'initializeNdef'});
+  assert.deepEqual(await api.formatNdef(options), {method: 'formatNdef'});
   assert.equal(await api.isWriting(), true);
   assert.equal(await api.cancelWrite(), undefined);
   assert.deepEqual(await api.acquireForegroundDispatch('screen:1'), {method: 'acquireForegroundDispatch'});
@@ -48,7 +49,7 @@ test('UTS JS transport preserves all public native methods, arguments and cancel
   assert.deepEqual(calls, [
     ['getCapabilities', []], ['startScan', [options]], ['isScanning', []], ['cancelScan', []],
     ['writeNdef', [message, options]], ['initializeNdef', [message, marker, options]],
-    ['isWriting', []], ['cancelWrite', []],
+    ['formatNdef', [options]], ['isWriting', []], ['cancelWrite', []],
     ['acquireForegroundDispatch', ['screen:1']], ['releaseForegroundDispatch', ['screen:1']],
     ['getForegroundDispatchState', []], ['getPresentationState', []], ['waitForPresentationEnd', [options]],
   ]);
@@ -90,3 +91,48 @@ test('UTS JS waitForIdle consumes native state without inventing a bridge method
   await api.waitForIdle({timeoutMilliseconds: 500});
   assert.equal(writingQueries, 2);
 });
+
+const formatFixtures = JSON.parse(await readFile(new URL('tests/fixtures/bridge-contract.json', root), 'utf8'));
+for (const transport of ['nativeplugin', 'uts']) {
+  test(`${transport} formatting preserves results, options and errors without settling early`, async () => {
+    const calls = [];
+    let complete;
+    const dispatch = (options, callback) => { calls.push(options); complete = callback; };
+    const api = transport === 'nativeplugin'
+      ? await loadTransport('adapters/uniapp/index.js')
+      : await loadTransport('uni_modules/Sandrox-Sfiora/js_sdk/index.js', (method, json, callback) => {
+          assert.equal(method, 'formatNdef');
+          dispatch(JSON.parse(json)[0], envelope => callback(JSON.stringify(envelope)));
+        });
+    if (transport === 'nativeplugin') globalThis.uni = {requireNativePlugin: () => ({formatNdef: dispatch})};
+    try {
+      let settled = false;
+      const pending = api.formatNdef().then(value => { settled = true; return value; });
+      await Promise.resolve();
+      assert.equal(settled, false);
+      assert.deepEqual(calls[0], {});
+      complete({ok: true, data: formatFixtures.bridgeFormatResult});
+      complete({ok: false, error: {code: 'USER_CANCELLED'}});
+      assert.deepEqual(await pending, formatFixtures.bridgeFormatResult);
+      for (const verified of [true, false]) {
+        const request = api.formatNdef(formatFixtures.bridgeFormatOptions);
+        const preserved = {...formatFixtures.bridgeFormatResult, action: 'preserved', verified};
+        complete({ok: true, data: preserved});
+        assert.deepEqual(await request, preserved);
+        assert.deepEqual(calls.at(-1), formatFixtures.bridgeFormatOptions);
+      }
+      for (const invalid of [null, [], 'format', 1, true]) {
+        await assert.rejects(api.formatNdef(invalid), {code: 'INVALID_OPTIONS'});
+      }
+      assert.equal(calls.length, 3);
+      for (const code of ['NFC_UNSUPPORTED', 'USER_CANCELLED', 'WRITE_TIMEOUT', 'WRITE_VERIFICATION_FAILED']) {
+        const request = api.formatNdef();
+        const error = {code, message: 'Native formatting failed', recoverable: false};
+        complete({ok: false, error});
+        await assert.rejects(request, error);
+      }
+    } finally {
+      if (transport === 'nativeplugin') delete globalThis.uni;
+    }
+  });
+}

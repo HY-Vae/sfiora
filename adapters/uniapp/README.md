@@ -2,6 +2,8 @@
 
 Sfiora 为经典 uni-app 和 uni-app x 的 Android/iOS App 提供 NFC 标签读取、NDEF 消息写入与回读验证，以及按标记保留或初始化。读写内容由应用决定，可使用文本、URI、MIME 或 NFC Forum External Type 记录。
 
+Android 还提供主动调用的 NDEF 格式化与再次贴近验证；常规读写和标记初始化不会自动格式化。
+
 ## 兼容范围
 
 | 接入方式 | 页面与运行环境 | 最低系统 |
@@ -125,10 +127,11 @@ uni-app x 在项目根目录的 `Info.plist` 中添加用途说明：
 | `startScan` | 读取一次标签快照 |
 | `writeNdef` | 替换并验证完整 NDEF 消息 |
 | `initializeNdef` | 保留匹配内容，或写入并验证初始化消息 |
+| `formatNdef` | 在 Android 上格式化兼容标签，并在再次贴近后验证 |
 | `cancelScan` | 请求取消当前读取 |
-| `cancelWrite` | 请求取消当前写入或初始化 |
+| `cancelWrite` | 请求取消当前写入、初始化或格式化 |
 | `isScanning` | 查询原生读取是否仍在进行 |
-| `isWriting` | 查询原生写入是否仍在进行 |
+| `isWriting` | 查询原生写入、初始化或格式化是否仍在进行 |
 | `waitForIdle` | 在期限内等待本桥接实例空闲 |
 | `acquireForegroundDispatch` / `releaseForegroundDispatch` | 按 owner 申请／释放 Android 前台接管 |
 | `getForegroundDispatchState` | 查询前台接管的原生状态及诊断 |
@@ -249,11 +252,45 @@ export async function initializeTag() {
 
 在 x Vapor 中，写入和初始化使用相同消息对象，方法返回 `Promise<UTSJSONObject>`。例如将方法声明为 `async function replaceTag(): Promise<UTSJSONObject>`，读取 `action` 时用 `result['action'] as string | null`。
 
+## NDEF 格式化
+
+经典 uni-app legacy、经典 UTS 和 uni-app x 均提供 `formatNdef(options?)`。仅 Android 支持；iOS 调用返回 `NFC_UNSUPPORTED`，不会打开扫描会话。`getCapabilities().features` 包含 `ndefFormat` 表示桥接提供此能力，不保证当前手机能格式化每一种标签。具体支持范围取决于 Android 对该标签是否提供 `NdefFormatable`。
+
+格式化可能改写非 NDEF 数据和存储访问配置，应由用户明确发起，并在操作页面说明风险。它不是恢复出厂，也不会修复损坏、解除永久只读或破解受保护的标签。已经具备 NDEF 的标签不会被格式化或重写，只读标签仍保持只读。
+
+沿用上面的 `sfiora` 导入，在页面的操作与错误处理流程中调用：
+
+```js
+async function formatTag() {
+  return await sfiora.formatNdef({ timeoutMilliseconds: 60000 });
+}
+```
+
+此调用无需传入写入内容。按钮调用方应处理返回值和拒绝，并按下一节管理取消与忙碌状态；不能把未格式化的读取结果自动连接到此操作。
+
+- 首次贴近时，保持标签不动，直到原生面板提示移开。
+- 移开后，再次贴近同一标签。插件确认标签身份、可写状态，并回读验证空的 NDEF 记录。
+- Promise 在最终结果或错误时结束；等待再次贴近期间仍处于 `isWriting() === true`。
+
+成功结果有 `operation: 'formatNdef'`、`action`、`verified` 和 `tag`：
+
+| 结果 | 含义 |
+| --- | --- |
+| `action: 'formatted'`、`verified: true` | 已完成格式化，并在再次贴近后验证通过 |
+| `action: 'preserved'`、`verified: true` | 已有 NDEF，取得了实时内容，没有写入 |
+| `action: 'preserved'`、`verified: false` | 已有 NDEF，但系统未返回实时消息；没有写入，内容尚未确认 |
+
+不要只凭 Promise 成功就显示“格式化验证成功”。`preserved` 分支通常一次贴近即可返回，不需要再次贴近验证新格式。uni-app x 的调用返回 `Promise<UTSJSONObject>`，可通过 `result['action'] as string` 和 `result['verified'] as boolean` 读取结果。
+
+`timeoutMilliseconds` 为 1000–60000 的整数，默认 30000；覆盖格式化和再次贴近验证的完整操作，不会在第一次贴近后重新计时。`messages` 可选，默认使用原生中英文文案。自定义时必须完整提供 `NfcFormatMessages` 的 16 个非空字符串字段：`title`、`instruction`、`cancel`、`done`、`success`、`verificationRequired`、`preserved`、`preservedUnverified`、`failureTitle`、`timeout`、`nfcDisabled`、`nfcUnsupported`、`tagLost`、`unsupportedTag`、`formatFailed`、`verificationFailed`。格式化使用托管面板，不接受无界面配置。
+
+用 `cancelWrite()` 取消格式化，用 `waitForIdle()` 等待会话释放；Android 面板结束还需 `waitForPresentationEnd()`。取消、超时、丢失标签或验证失败不会回滚已执行的格式化指令，标签可能已经改变；应重新读取确认现状，不能直接认定未发生写入。
+
 ## 取消、页面生命周期与按钮状态
 
 取消没有进行中的操作不会报错。取消方法完成只代表请求已送达，原始读写 Promise 的失败仍需处理，也不代表系统 NFC 面板已经收起。
 
-页面应同时禁用读取和写入入口，条件是“本地有未完成调用，或 `isScanning()` / `isWriting()` 任一为 true”。iOS 成功结果可能在系统面板收起前返回，因此不能在 `finally` 中直接恢复按钮；继续查询状态，确认两项都为 false 后再恢复。状态查询失败应显示错误，不按 idle 处理。
+页面应同时禁用读取、写入、初始化和格式化入口，条件是“本地有未完成调用，或 `isScanning()` / `isWriting()` 任一为 true”。iOS 成功结果可能在系统面板收起前返回，因此不能在 `finally` 中直接恢复按钮；继续查询状态，确认两项都为 false 后再恢复。状态查询失败应显示错误，不按 idle 处理。
 
 `await sfiora.waitForIdle({ timeoutMilliseconds: 5000 })` 可统一完成等待，legacy 的 JS SDK、UTS JS SDK 和直接 UTS API 均支持。超时参数为 1–60000 的整数，默认 5000；查询失败原样返回错误，超时返回 `SESSION_CLOSE_TIMEOUT`，即使查询没有回调也会结束等待。它不取消当前操作、不预留下一次会话，也不会在超时后释放原生占用；用户可刷新真实状态后再试。
 
@@ -265,7 +302,7 @@ export async function initializeTag() {
 
 前台接管及面板结束等待要求插件为 1.2.0 或更新版本，JS/UTS 代码与基座中的原生模块必须匹配。
 
-默认不接管空闲标签。如果标签会一直贴在手机上，可在 NFC 页面显示期间开启前台接管，避免空闲标签打开其他标签处理页面。接管会忽略这些标签；读取、写入和初始化仍需主动调用原有方法。
+默认不接管空闲标签。如果标签会一直贴在手机上，可在 NFC 页面显示期间开启前台接管，避免空闲标签打开其他标签处理页面。接管会忽略这些标签；读取、写入、初始化和格式化仍需主动调用各自的方法。
 
 用 `acquireForegroundDispatch(ownerId)` 申请，用 `releaseForegroundDispatch(ownerId)` 释放。重复申请同一个 ID 只保留一份请求，释放一次即可；释放不存在的 ID 不影响其他持有者，不同页面应使用不同 ID。ID 长度为 1–128 个 ASCII 字符，首字符为字母或数字，其余可使用字母、数字、`.`、`_`、`:`、`-`；每个原生控制器最多保留 128 个不同 ID，非法 ID 返回 `INVALID_OPTIONS`。
 
@@ -489,7 +526,7 @@ iOS 的 `ios.pollingTechnologies` 默认为 `['iso14443', 'iso15693']`，必须�
 
 插件在设备上读取、处理并返回标签数据，按调用方提供的内容写入标签。它无广告、统计或推广 SDK，不向作者服务器上传标签内容，也不在宿主设备持久化标签内容；业务校验和后续存储由调用方负责。
 
-Sfiora 的 UNI 接口不提供标签格式化、永久锁定、标签密码管理、门禁卡复制、卡模拟或任意 APDU/私有区写入。标记与读取出的 ID 不构成身份真实性证明。
+Sfiora 的 UNI 接口不提供永久锁定、标签密码管理、门禁卡复制、卡模拟或任意 APDU/私有区写入。标记与读取出的 ID 不构成身份真实性证明。
 
 [源码与问题反馈](https://github.com/sandroxy/sfiora) · [版本记录](https://github.com/sandroxy/sfiora/blob/main/CHANGELOG.md) · [Apache License 2.0](https://github.com/sandroxy/sfiora/blob/main/LICENSE)
 

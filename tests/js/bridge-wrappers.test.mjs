@@ -459,6 +459,7 @@ test('UniApp wrapper converts callback envelopes to Promise values', async () =>
       'cancelScan',
       'cancelWrite',
       'getCapabilities',
+      'formatNdef',
       'initializeNdef',
       'isScanning',
       'isWriting',

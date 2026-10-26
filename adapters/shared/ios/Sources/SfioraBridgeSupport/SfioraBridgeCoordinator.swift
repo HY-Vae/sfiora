@@ -127,6 +127,19 @@ import Foundation
             }
         }
 
+        @objc(formatNdefWithFailure:)
+        public func formatNdef(failure: @escaping FailureHandler) {
+            runOnMain {
+                failure(
+                    NfcError(
+                        code: .nfcUnsupported,
+                        message: "NDEF formatting is not supported by Sfiora on iOS",
+                        recoverable: false
+                    ).dictionary as NSDictionary
+                )
+            }
+        }
+
         public func cancelWrite() {
             client.cancelWrite()
         }
@@ -169,7 +182,7 @@ import Foundation
                         ) as? [Any],
                         let count = [
                             "getCapabilities": 0, "startScan": 1, "cancelScan": 0,
-                            "isScanning": 0, "writeNdef": 2, "initializeNdef": 3,
+                            "isScanning": 0, "writeNdef": 2, "initializeNdef": 3, "formatNdef": 1,
                             "cancelWrite": 0, "isWriting": 0,
                             "getForegroundDispatchState": 0, "acquireForegroundDispatch": 1,
                             "releaseForegroundDispatch": 1, "getPresentationState": 0,
@@ -218,6 +231,9 @@ import Foundation
                             message: try object(0), marker: try object(1), options: try object(2),
                             success: success, failure: failure
                         )
+                    case "formatNdef":
+                        _ = try object(0)
+                        self.formatNdef(failure: failure)
                     default: break
                     }
                 } catch {

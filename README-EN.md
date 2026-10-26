@@ -24,7 +24,8 @@ NFC operations without depending on a login, identity, or other business model.
 
 Android also offers explicit
 [NDEF formatting with readback verification](adapters/react-native/README.md#explicit-ndef-formatting),
-both natively and through React Native. Support depends on the device and tag.
+natively and through React Native and [UNI](adapters/uniapp/README.md#ndef-格式化).
+Support depends on the device and tag.
 
 ## Platforms and distribution
 

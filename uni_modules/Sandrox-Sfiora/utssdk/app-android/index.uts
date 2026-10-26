@@ -1,6 +1,6 @@
 import {
   InvokeSfioraNative, SfioraNativeCallback, GetCapabilities, StartScan,
-  CancelScan, IsScanning, WriteNdef, InitializeNdef, CancelWrite, IsWriting, WaitForIdle, AcquireForegroundDispatch, ReleaseForegroundDispatch, GetForegroundDispatchState, GetPresentationState, WaitForPresentationEnd,
+  CancelScan, IsScanning, WriteNdef, InitializeNdef, FormatNdef, CancelWrite, IsWriting, WaitForIdle, AcquireForegroundDispatch, ReleaseForegroundDispatch, GetForegroundDispatchState, GetPresentationState, WaitForPresentationEnd,
 } from '../interface.uts'
 import { invokeObject, invokeOwner, invokeBoolean, invokeVoid, waitForNativeIdle } from '../bridge.uts'
 export { SfioraError } from '../bridge.uts'
@@ -39,6 +39,9 @@ export const writeNdef: WriteNdef = function(message: UTSJSONObject, options?: U
 }
 export const initializeNdef: InitializeNdef = function(message: UTSJSONObject, marker: UTSJSONObject, options?: UTSJSONObject): Promise<UTSJSONObject> {
   return invokeObject(invokeSfioraNative, 'initializeNdef', [message, marker, options ?? {}])
+}
+export const formatNdef: FormatNdef = function(options?: UTSJSONObject): Promise<UTSJSONObject> {
+  return invokeObject(invokeSfioraNative, 'formatNdef', [options ?? {}])
 }
 export const cancelWrite: CancelWrite = function(): Promise<void> {
   return invokeVoid(invokeSfioraNative, 'cancelWrite')

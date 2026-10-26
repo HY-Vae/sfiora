@@ -12,6 +12,7 @@ import com.sandrox.sfiora.NfcClient;
 import com.sandrox.sfiora.NfcError;
 import com.sandrox.sfiora.NfcErrorCode;
 import com.sandrox.sfiora.NfcFeature;
+import com.sandrox.sfiora.NfcFormatResult;
 import com.sandrox.sfiora.NfcForegroundDispatchController;
 import com.sandrox.sfiora.NfcInitializationResult;
 import com.sandrox.sfiora.NfcTagSnapshot;
@@ -46,6 +47,7 @@ public final class SfioraBridgeRuntime {
             NfcFeature.NDEF,
             NfcFeature.NDEF_WRITE,
             NfcFeature.NDEF_INITIALIZE,
+            NfcFeature.NDEF_FORMAT,
             NfcFeature.READ_ONLY_MIFARE_ULTRALIGHT_PROBE,
             NfcFeature.READ_ONLY_TYPE_2_PROBE,
             NfcFeature.READ_ONLY_MIFARE_CLASSIC_DEFAULT_KEY_PROBE
@@ -95,7 +97,7 @@ public final class SfioraBridgeRuntime {
                 case "getCapabilities": case "cancelScan": case "isScanning":
                 case "cancelWrite": case "isWriting":
                 case "getForegroundDispatchState": case "getPresentationState": count = 0; break;
-                case "startScan": case "acquireForegroundDispatch":
+                case "startScan": case "formatNdef": case "acquireForegroundDispatch":
                 case "releaseForegroundDispatch": case "waitForPresentationEnd": count = 1; break;
                 case "writeNdef": count = 2; break;
                 case "initializeNdef": count = 3; break;
@@ -114,6 +116,7 @@ public final class SfioraBridgeRuntime {
                 case "isScanning": isScanning(callback); break;
                 case "writeNdef": writeNdef(context, args[0], args[1], callback); break;
                 case "initializeNdef": initializeNdef(context, args[0], args[1], args[2], callback); break;
+                case "formatNdef": formatNdef(context, args[0], callback); break;
                 case "cancelWrite": cancelWrite(callback); break;
                 case "isWriting": isWriting(callback); break;
                 case "getForegroundDispatchState":
@@ -393,6 +396,51 @@ public final class SfioraBridgeRuntime {
         } catch (IllegalArgumentException error) {
             invoke(callback, failure(invalidOptions(error)));
         }
+    }
+
+    public void formatNdef(Context context, Object options, ResultCallback callback) {
+        if (callback == null) {
+            return;
+        }
+
+        final SfioraBridgeFormatOptions request;
+        try {
+            request = SfioraBridgeFormatOptions.parse(options);
+        } catch (SfioraBridgeOptionsException error) {
+            invoke(callback, failure(invalidOptions(error)));
+            return;
+        }
+
+        Activity activity = availableActivity(context);
+        if (hostPaused || activity == null) {
+            invoke(callback, failure(hostUnavailable()));
+            return;
+        }
+        if (!ensureControllersFor(activity)) {
+            invoke(callback, failure(new NfcError(NfcErrorCode.WRITE_BUSY,
+                    "The previous NFC session is still closing", true)));
+            return;
+        }
+        writeController.startFormat(
+                request.getWriteConfiguration(),
+                request.getMessages(),
+                new NfcClient.FormatCallback() {
+                    @Override
+                    public void onVerificationRequired() {
+                        // The managed panel requests another presentation; keep the call pending.
+                    }
+
+                    @Override
+                    public void onSuccess(NfcFormatResult result) {
+                        invoke(callback, success(result.toMap()));
+                    }
+
+                    @Override
+                    public void onFailure(NfcError error) {
+                        invoke(callback, failure(error));
+                    }
+                }
+        );
     }
 
     public void cancelWrite(ResultCallback callback) {

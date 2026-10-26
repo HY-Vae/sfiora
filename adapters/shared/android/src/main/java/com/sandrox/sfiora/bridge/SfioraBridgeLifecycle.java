@@ -98,7 +98,8 @@ public final class SfioraBridgeLifecycle implements LifecycleEventObserver {
     }
 
     private static boolean startsOperation(String method) {
-        return "startScan".equals(method) || "writeNdef".equals(method) || "initializeNdef".equals(method);
+        return "startScan".equals(method) || "writeNdef".equals(method)
+                || "initializeNdef".equals(method) || "formatNdef".equals(method);
     }
 
     private static void rejectUnavailableHost(SfioraBridgeJsonCallback callback) {

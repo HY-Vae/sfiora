@@ -66,6 +66,11 @@ public final class SfioraUniModule extends UniModule {
     }
 
     @UniJSMethod(uiThread = true)
+    public void formatNdef(Object options, UniJSCallback callback) {
+        call("formatNdef", new Object[] {options}, callback);
+    }
+
+    @UniJSMethod(uiThread = true)
     public void cancelWrite(UniJSCallback callback) {
         call("cancelWrite", new Object[] {}, callback);
     }

@@ -196,6 +196,24 @@ UNI_EXPORT_METHOD(@selector(initializeNdef:marker:options:callback:))
         }];
 }
 
+UNI_EXPORT_METHOD(@selector(formatNdef:callback:))
+- (void)formatNdef:(id)options callback:(UniModuleKeepAliveCallback)callback {
+    if (!callback) {
+        return;
+    }
+    if (options != nil && ![options isKindOfClass:NSDictionary.class]) {
+        callback([SfioraUniModule failureEnvelope:@{
+            @"code": @"INVALID_OPTIONS",
+            @"message": @"options must be an object",
+            @"recoverable": @YES
+        }], NO);
+        return;
+    }
+    [[SfioraBridgeCoordinator shared] formatNdefWithFailure:^(NSDictionary *error) {
+        callback([SfioraUniModule failureEnvelope:error], NO);
+    }];
+}
+
 UNI_EXPORT_METHOD(@selector(cancelWrite:))
 - (void)cancelWrite:(UniModuleKeepAliveCallback)callback {
     [[SfioraBridgeCoordinator shared] cancelWrite];

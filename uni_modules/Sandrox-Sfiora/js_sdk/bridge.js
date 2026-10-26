@@ -184,6 +184,19 @@ export function createSfiora(transport) {
     return invoke('initializeNdef', message, marker, options);
   }
   
+  function formatNdef(options = {}) {
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      return Promise.reject(
+        new SfioraError({
+          code: 'INVALID_OPTIONS',
+          message: 'formatNdef options must be an object',
+          recoverable: true,
+        })
+      );
+    }
+    return invoke('formatNdef', options);
+  }
+
   async function cancelWrite() {
     await invoke('cancelWrite');
   }
@@ -240,6 +253,6 @@ export function createSfiora(transport) {
     getPresentationState, waitForPresentationEnd,
     waitForIdle,
     getCapabilities, startScan, cancelScan, isScanning,
-    writeNdef, initializeNdef, cancelWrite, isWriting,
+    writeNdef, initializeNdef, formatNdef, cancelWrite, isWriting,
   };
 }

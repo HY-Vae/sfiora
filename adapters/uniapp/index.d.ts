@@ -1,5 +1,10 @@
 export type {
   NfcCapabilities,
+  NfcFormatOptions,
+  NfcFormatMessages,
+  NfcFormattedResult,
+  NfcFormatPreservedResult,
+  NfcFormatResult,
   NfcForegroundDispatchState,
   NfcPresentationState,
   NfcWaitForPresentationEndOptions,
@@ -27,6 +32,8 @@ export type {
 
 import type {
   NfcCapabilities,
+  NfcFormatOptions,
+  NfcFormatResult,
   NfcForegroundDispatchState,
   NfcPresentationState,
   NfcWaitForPresentationEndOptions,
@@ -63,6 +70,11 @@ export declare function initializeNdef(
   marker: NfcNdefExternalTypeMarker,
   options?: NfcWriteOptions
 ): Promise<NfcNdefInitializationResult>;
+/** Android only. Requires another presentation to verify newly formatted tags.
+ * Preserves existing NDEF content. iOS rejects with NFC_UNSUPPORTED.
+ */
+export declare function formatNdef(options?: NfcFormatOptions): Promise<NfcFormatResult>;
+/** Cancels writing, initialization or formatting. Does not undo changes to the tag. */
 export declare function cancelWrite(): Promise<void>;
 export declare function isWriting(): Promise<boolean>;
 

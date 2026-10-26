@@ -569,7 +569,7 @@ errors, check the usage description, signed entitlement, and signing profile.
 
 ## Privacy and support
 
-The React Native API does not provide tag formatting, permanent locking,
+The React Native API does not provide permanent locking,
 tag password management, access-card copying, card emulation, or arbitrary
 APDU/private-block writes.
 Tag technologies and read-only details do not imply support for all operations

@@ -7,6 +7,7 @@ export type CancelScan = () => Promise<void>
 export type IsScanning = () => Promise<boolean>
 export type WriteNdef = (message: UTSJSONObject, options?: UTSJSONObject) => Promise<UTSJSONObject>
 export type InitializeNdef = (message: UTSJSONObject, marker: UTSJSONObject, options?: UTSJSONObject) => Promise<UTSJSONObject>
+export type FormatNdef = (options?: UTSJSONObject) => Promise<UTSJSONObject>
 export type CancelWrite = () => Promise<void>
 export type IsWriting = () => Promise<boolean>
 export type WaitForIdle = (options?: UTSJSONObject) => Promise<void>

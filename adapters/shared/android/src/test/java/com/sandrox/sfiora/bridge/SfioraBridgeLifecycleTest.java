@@ -152,7 +152,7 @@ public class SfioraBridgeLifecycleTest {
         JSONObject result = call(null, "getCapabilities", "[]");
         assertTrue(result.getBoolean("ok"));
         JSONObject capabilities = result.getJSONObject("data");
-        List<String> expected = List.of("discover", "ndef", "ndefWrite", "ndefInitialize",
+        List<String> expected = List.of("discover", "ndef", "ndefWrite", "ndefInitialize", "ndefFormat",
                 "readOnlyMifareUltralightProbe", "readOnlyType2Probe",
                 "readOnlyMifareClassicDefaultKeyProbe");
         assertEquals(expected, SfioraBridgeRuntime.getCapabilities(host.get()).get("features"));
@@ -160,6 +160,14 @@ public class SfioraBridgeLifecycleTest {
         assertEquals("android", capabilities.getString("platform"));
         assertTrue(capabilities.getBoolean("supported"));
         assertTrue(capabilities.getBoolean("enabled"));
+    }
+
+    @Test public void formattingCannotStartWhenFirstBoundInBackground() throws Exception {
+        host.pause();
+        JSONObject result = call(host.get(), "formatNdef", "[{}]");
+        assertFalse(result.getBoolean("ok"));
+        assertEquals("INTERNAL_ERROR", result.getJSONObject("error").getString("code"));
+        assertFalse(shadowOf(NfcAdapter.getDefaultAdapter(host.get())).isInReaderMode());
     }
 
     @Test public void destroyedHostCannotBeRebound() throws Exception {

@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- UNI 新增 `formatNdef`，覆盖经典 uni-app legacy、经典 UTS 和 uni-app x；Android 共用原生格式化面板与再次贴近验证，能力查询、类型和自定义文案同步提供。iOS 调用明确返回 `NFC_UNSUPPORTED`。
 - React Native 新增 `formatNdef`，在 Android 上使用原生操作面板完成格式化与再次贴近验证，并区分已验证结果和未确认的保留内容；支持新旧架构、能力查询及自定义文案。iOS 调用明确返回 `NFC_UNSUPPORTED`。
 - Android 原生无界面核心新增 `NfcClient.startFormat`，将设备支持格式化的标签准备为 NDEF。移开后再次贴近同一标签，确认可写状态并回读验证空记录。
 - 已具备 NDEF 的标签保留原内容；系统未返回实时消息时明确返回内容未确认，不进行格式化或写入。
