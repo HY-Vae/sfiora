@@ -27,12 +27,13 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp">
+            android:layout_height="wrap_content"
+            android:minHeight="48dp">
 
             <TextView
                 android:id="@+id/nfc_reader_scan_title"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_marginStart="42dp"
                 android:layout_marginEnd="42dp"
@@ -40,11 +41,11 @@
                 android:fontFamily="sans-serif"
                 android:gravity="bottom|center_horizontal"
                 android:includeFontPadding="false"
+                android:minHeight="48dp"
                 android:text="@string/nfc_reader_scan_title"
                 android:textColor="@color/nfc_reader_on_surface"
                 android:textSize="26sp"
-                android:textStyle="bold"
-                android:translationY="2dp" />
+                android:textStyle="bold" />
 
             <ImageButton
                 android:id="@+id/nfc_reader_scan_close"

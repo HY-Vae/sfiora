@@ -130,6 +130,95 @@ public final class NfcPresentationMessages {
         }
     }
 
+    /** Text for explicit formatting, tag rediscovery and preserved content. */
+    public static final class Format {
+        public final String title;
+        public final String instruction;
+        public final String cancel;
+        public final String done;
+        public final String success;
+        public final String verificationRequired;
+        public final String preserved;
+        public final String preservedUnverified;
+        public final String failureTitle;
+        public final String timeout;
+        public final String nfcDisabled;
+        public final String nfcUnsupported;
+        public final String tagLost;
+        public final String unsupportedTag;
+        public final String formatFailed;
+        public final String verificationFailed;
+
+        public Format(
+                String title,
+                String instruction,
+                String cancel,
+                String done,
+                String success,
+                String verificationRequired,
+                String preserved,
+                String preservedUnverified,
+                String failureTitle,
+                String timeout,
+                String nfcDisabled,
+                String nfcUnsupported,
+                String tagLost,
+                String unsupportedTag,
+                String formatFailed,
+                String verificationFailed
+        ) {
+            this.title = requireText(title, "title");
+            this.instruction = requireText(instruction, "instruction");
+            this.cancel = requireText(cancel, "cancel");
+            this.done = requireText(done, "done");
+            this.success = requireText(success, "success");
+            this.verificationRequired = requireText(verificationRequired, "verificationRequired");
+            this.preserved = requireText(preserved, "preserved");
+            this.preservedUnverified = requireText(preservedUnverified, "preservedUnverified");
+            this.failureTitle = requireText(failureTitle, "failureTitle");
+            this.timeout = requireText(timeout, "timeout");
+            this.nfcDisabled = requireText(nfcDisabled, "nfcDisabled");
+            this.nfcUnsupported = requireText(nfcUnsupported, "nfcUnsupported");
+            this.tagLost = requireText(tagLost, "tagLost");
+            this.unsupportedTag = requireText(unsupportedTag, "unsupportedTag");
+            this.formatFailed = requireText(formatFailed, "formatFailed");
+            this.verificationFailed = requireText(verificationFailed, "verificationFailed");
+        }
+    }
+
+    static Format resolveFormat(Context context, Format override) {
+        Objects.requireNonNull(context, "context is required");
+        if (override != null) return override;
+        return new Format(
+                context.getString(R.string.nfc_reader_format_title),
+                context.getString(R.string.nfc_reader_format_instruction),
+                context.getString(R.string.nfc_reader_scan_cancel),
+                context.getString(R.string.nfc_reader_done),
+                context.getString(R.string.nfc_reader_format_success),
+                context.getString(R.string.nfc_reader_format_verify),
+                context.getString(R.string.nfc_reader_format_preserved),
+                context.getString(R.string.nfc_reader_format_unverified),
+                context.getString(R.string.nfc_reader_format_failed),
+                context.getString(R.string.nfc_reader_format_timeout),
+                context.getString(R.string.nfc_reader_scan_nfc_disabled),
+                context.getString(R.string.nfc_reader_scan_nfc_unsupported),
+                context.getString(R.string.nfc_reader_format_tag_lost),
+                context.getString(R.string.nfc_reader_format_unsupported),
+                context.getString(R.string.nfc_reader_format_failed_detail),
+                context.getString(R.string.nfc_reader_format_verification_failed)
+        );
+    }
+
+    static Resolved formatPanelMessages(Format messages) {
+        return new Resolved(
+                messages.title, messages.instruction, messages.cancel, messages.done,
+                messages.success, messages.failureTitle, messages.timeout,
+                messages.nfcDisabled, messages.nfcUnsupported, messages.tagLost,
+                messages.unsupportedTag, messages.formatFailed,
+                null, null, messages.verificationFailed
+        );
+    }
+
     static Resolved resolveScan(Context context, Scan override) {
         Objects.requireNonNull(context, "context is required");
         if (override != null) {

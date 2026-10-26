@@ -22,4 +22,16 @@
     <string name="nfc_reader_write_capacity_exceeded">This NFC tag does not have enough capacity for the message.</string>
     <string name="nfc_reader_write_unsupported">This tag is not formatted for standard NDEF writing.</string>
     <string name="nfc_reader_write_verification_failed">The write could not be verified. Keep the tag close and read it before trying again.</string>
+    <string name="nfc_reader_format_title">Ready to Scan</string>
+    <string name="nfc_reader_format_instruction">Hold one NFC tag near the back of your phone. Keep it steady until asked to remove it.</string>
+    <string name="nfc_reader_format_success">Formatting complete</string>
+    <string name="nfc_reader_format_verify">Remove the tag, then hold the same tag near your phone again to verify formatting.</string>
+    <string name="nfc_reader_format_preserved">NDEF already available. Existing content was read; nothing was changed.</string>
+    <string name="nfc_reader_format_unverified">NDEF already available. Nothing was changed, but the contents could not be confirmed. Read the tag to check.</string>
+    <string name="nfc_reader_format_failed">Couldn’t format the tag</string>
+    <string name="nfc_reader_format_timeout">Formatting timed out. Read the tag to check its state before trying again.</string>
+    <string name="nfc_reader_format_tag_lost">The tag moved out of range. Read it to check its state before trying again.</string>
+    <string name="nfc_reader_format_unsupported">This device cannot format this tag for NDEF.</string>
+    <string name="nfc_reader_format_failed_detail">Couldn’t complete the operation. Read the tag to check its state before trying again.</string>
+    <string name="nfc_reader_format_verification_failed">Formatting could not be verified. The tag may have changed; read it before trying again.</string>
 </resources>

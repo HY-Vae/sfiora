@@ -22,4 +22,16 @@
     <string name="nfc_reader_write_capacity_exceeded">当前 NFC 标签没有足够容量写入这些信息。</string>
     <string name="nfc_reader_write_unsupported">当前标签尚未格式化为可写的标准 NDEF 标签。</string>
     <string name="nfc_reader_write_verification_failed">写入结果未能完成校验，请保持标签贴近并先读取确认。</string>
+    <string name="nfc_reader_format_title">已准备好扫描</string>
+    <string name="nfc_reader_format_instruction">将 NFC 标签靠近手机背部，保持不动，直到提示移开。</string>
+    <string name="nfc_reader_format_success">格式化成功</string>
+    <string name="nfc_reader_format_verify">请移开标签，再将同一枚标签贴近手机，验证格式化结果。</string>
+    <string name="nfc_reader_format_preserved">标签已具备 NDEF。已读取原有内容，未作任何修改。</string>
+    <string name="nfc_reader_format_unverified">标签已具备 NDEF，未作任何修改，但内容未能确认。请重新读取检查。</string>
+    <string name="nfc_reader_format_failed">未能格式化标签</string>
+    <string name="nfc_reader_format_timeout">格式化超时。重试前请先读取标签确认状态。</string>
+    <string name="nfc_reader_format_tag_lost">标签已离开感应区域。重试前请先读取标签确认状态。</string>
+    <string name="nfc_reader_format_unsupported">当前设备无法将此标签格式化为 NDEF。</string>
+    <string name="nfc_reader_format_failed_detail">操作未完成。重试前请先读取标签确认状态。</string>
+    <string name="nfc_reader_format_verification_failed">格式化结果未能验证，标签可能已经改变。重试前请先读取确认。</string>
 </resources>

@@ -15,6 +15,7 @@ import com.sandrox.sfiora.NdefRecord;
 import com.sandrox.sfiora.NfcClient;
 import com.sandrox.sfiora.NfcError;
 import com.sandrox.sfiora.NfcErrorCode;
+import com.sandrox.sfiora.NfcFormatResult;
 import com.sandrox.sfiora.NfcInitializationResult;
 import com.sandrox.sfiora.NfcTagSnapshot;
 import com.sandrox.sfiora.NfcWriteResult;
@@ -109,6 +110,31 @@ public class NfcControllerPresentationLifecycleTest {
             @Override public void onFailure(NfcError error) { assertEquals(NfcErrorCode.NFC_DISABLED, error.getCode()); }
         });
         assertFalse(reader.isScanning());
+    }
+
+    @Test public void formatReplacementThenStopReleasesBothWriteAndFormatPanels() {
+        write();
+        captureTerminalPanel();
+        format();
+        capturePanel();
+        assertReleased(writer::stopWrite);
+    }
+
+    @Test public void repeatedFormatThenCloseReleasesEveryPanelWithoutAnotherFrame() {
+        format();
+        captureTerminalPanel();
+        format();
+        capturePanel();
+        assertReleased(writer::close);
+    }
+
+    private void format() {
+        writer.startFormat(new NfcClient.FormatCallback() {
+            @Override public void onVerificationRequired() { fail("NFC is disabled"); }
+            @Override public void onSuccess(NfcFormatResult result) { fail("NFC is disabled"); }
+            @Override public void onFailure(NfcError error) { assertEquals(NfcErrorCode.NFC_DISABLED, error.getCode()); }
+        });
+        assertFalse(writer.isWriting());
     }
 
     private void write() {

@@ -1,8 +1,9 @@
 # Sfiora for Android
 
-Foreground NFC discovery, NDEF reads, verified writes, and marker-based
-initialization, plus explicit NDEF formatting in the Android headless core. Requires Android API 21 or newer and a physical NFC-capable
-device. The host must also satisfy its framework requirements.
+Foreground NFC discovery, NDEF reads, verified writes, marker-based initialization,
+and explicit NDEF formatting, with optional managed panels.
+Requires Android API 21 or newer and a physical NFC-capable device. The host
+must also satisfy its framework requirements.
 
 Use the [headless client](#headless-read-write-and-initialization) when the app
 owns the NFC interface, or [managed panels](#managed-panels) for the built-in
@@ -159,6 +160,8 @@ foreground dispatcher below if tags may remain nearby between operations.
 ## Explicit NDEF formatting
 
 `NfcClient.startFormat` prepares tags for NDEF through the headless core.
+For a built-in panel, use `NfcWriteController.startFormat` from `sfiora-ui`;
+both use the same operation and return `NfcFormatResult`.
 
 Call it only after the user explicitly chooses to prepare a tag for NDEF.
 It uses Android [NdefFormatable](https://developer.android.com/reference/android/nfc/tech/NdefFormatable),
@@ -168,9 +171,11 @@ No password guessing, raw memory fallback, permanent locking, or automatic retry
 is performed. Formatting may replace non-NDEF data and alter access configuration;
 it is not a general factory reset or a repair for every kind of tag.
 
-Formatting writes one `TNF_EMPTY` record. Android must then rediscover the tag
-before NDEF can be verified. When `onVerificationRequired` fires, ask the user
-to remove and present the same tag again.
+An ordinary NDEF write and its live readback use one connection. Formatting
+writes one `TNF_EMPTY` record, then waits for Android to rediscover the tag:
+the original `Tag` retains its discovery-time technology list and cannot provide
+the newly available `Ndef` connection. When `onVerificationRequired` fires,
+ask the user to remove and present the same tag again.
 The operation remains busy until this verification or a terminal failure.
 Success with `action: "formatted"` requires matching tag IDs, writable NDEF and
 an exact live readback of the empty message. Matching the ID is an operational
@@ -355,6 +360,13 @@ public final class ManagedNfcActivity extends Activity {
             NfcWriteConfiguration.builder().build(), callback);
     }
 
+    // Explain the effects of formatting before the user selects this action.
+    public void format(NfcClient.FormatCallback callback) {
+        if (!canStart()) return;
+        writer.startFormat(NfcWriteConfiguration.builder().timeoutMillis(60_000L).build(),
+            callback);
+    }
+
     public void cancel() {
         scanner.cancelScan();
         writer.cancelWrite();
@@ -375,14 +387,35 @@ public final class ManagedNfcActivity extends Activity {
 ```
 
 `NfcScanPresentation.NONE` disables the scan panel. `NfcWriteController` always
-uses its panel; use `NfcClient` for headless writes. Panels show progress and
-terminal state, never your tag payload. Success ends the scanning animation,
-shows a complete checkmark, and dismisses automatically. Do not call
+uses its panel for writing, initialization and formatting; use `NfcClient` for
+headless operations. Panels show progress and terminal state, never your tag
+payload. Successful reads, writes and initialization show a complete checkmark
+before the panel dismisses automatically. Formatting uses the same presentation
+for verified results. Do not call
 `stopScan()` / `stopWrite()` from a success callback just to hide the panel:
 those lifecycle methods can interrupt its presentation.
 
+`startFormat` starts scanning immediately. Explain that formatting may replace
+non-NDEF data and access settings before the user selects the format action.
+The panel asks the user to remove and present the same tag again before forwarding
+`onVerificationRequired`.
+Use that callback to update other UI if needed; it must not restart
+the operation. A verified preserved result displays “NDEF already available”
+without implying the tag was formatted or made writable. Unconfirmed preserved
+content displays an information icon instead of a success checkmark.
+Formatting errors and information notices dismiss automatically after a brief
+pause; the user can also close them with Done or Back.
+Always inspect the result or error in your callback. In particular, cancellation
+closes the panel and does not imply that a format command was rolled back.
+The [formatting boundaries](#explicit-ndef-formatting) also apply to the managed API.
+
+`isWriting()`, `cancelWrite()`, `stopWrite()` and `close()` cover all operations
+started by `NfcWriteController`. Null configuration uses the same defaults as
+`NfcWriteConfiguration.builder().build()`; the callback is required.
+
 To customize wording, use the overload accepting `NfcPresentationMessages.Scan`
-or `.Write` immediately before the callback. Supply every non-empty string in
+for reading, `.Write` for writing or initialization, or `.Format` for formatting,
+immediately before the callback. Supply every non-empty string in
 that message object; omitting the object uses built-in Android resources.
 Constructor fields are documented in
 [NfcPresentationMessages.java](sfiora-ui/src/main/java/com/sandrox/sfiora/ui/NfcPresentationMessages.java).

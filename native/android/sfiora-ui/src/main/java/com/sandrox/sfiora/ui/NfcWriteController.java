@@ -11,6 +11,7 @@ import com.sandrox.sfiora.NfcCapabilities;
 import com.sandrox.sfiora.NfcClient;
 import com.sandrox.sfiora.NfcError;
 import com.sandrox.sfiora.NfcErrorCode;
+import com.sandrox.sfiora.NfcFormatResult;
 import com.sandrox.sfiora.NfcInitializationResult;
 import com.sandrox.sfiora.NfcWriteConfiguration;
 import com.sandrox.sfiora.NfcWriteResult;
@@ -22,7 +23,7 @@ import java.util.Objects;
  * Optional managed Android presentation facade around the headless
  * {@link NfcClient}.
  *
- * <p>The panel only communicates write progress and terminal state. It never
+ * <p>The panel only communicates operation progress and terminal state. It never
  * displays or transforms the NDEF payload, and callers receive the same result
  * and error objects as when they use {@link NfcClient} directly.</p>
  */
@@ -141,13 +142,43 @@ public final class NfcWriteController implements AutoCloseable {
         );
     }
 
+    /**
+     * Starts NDEF formatting with a managed panel in response to an explicit user action.
+     * Explain beforehand that formatting may replace non-NDEF data and access settings.
+     * The panel asks for the same tag again before reporting verified formatting.
+     * Existing NDEF content is preserved; the result states whether it was read back.
+     */
+    public void startFormat(
+            NfcWriteConfiguration configuration,
+            NfcClient.FormatCallback callback
+    ) {
+        startFormat(configuration, null, callback);
+    }
+
+    public void startFormat(
+            NfcWriteConfiguration configuration,
+            NfcPresentationMessages.Format messages,
+            NfcClient.FormatCallback callback
+    ) {
+        Objects.requireNonNull(callback, "callback is required");
+        runOnMain(() -> startFormatOnMain(
+                configuration == null ? NfcWriteConfiguration.builder().build() : configuration,
+                messages,
+                callback
+        ));
+    }
+
+    public void startFormat(NfcClient.FormatCallback callback) {
+        startFormat(NfcWriteConfiguration.builder().build(), callback);
+    }
+
     public void cancelWrite() {
         client.cancelWrite();
     }
 
     /**
-     * Stops writing and removes managed UI without reporting a user
-     * cancellation.
+     * Stops writing, initialization or formatting and removes managed UI
+     * without reporting a user cancellation.
      */
     public void stopWrite() {
         runOnMain(() -> {
@@ -216,7 +247,10 @@ public final class NfcWriteController implements AutoCloseable {
             callback.onFailure(preparationError);
             return null;
         }
-        return presentDialog(messages, client::cancelWrite, callback::onFailure);
+        Activity activity = availableActivity(callback::onFailure);
+        if (activity == null) return null;
+        return presentDialog(activity, ManagedNfcOperationDialog.Operation.WRITE,
+                NfcPresentationMessages.resolveWrite(activity, messages), callback::onFailure);
     }
 
     private ManagedNfcOperationDialog prepareInitializationDialog(
@@ -228,7 +262,33 @@ public final class NfcWriteController implements AutoCloseable {
             callback.onFailure(preparationError);
             return null;
         }
-        return presentDialog(messages, client::cancelWrite, callback::onFailure);
+        Activity activity = availableActivity(callback::onFailure);
+        if (activity == null) return null;
+        return presentDialog(activity, ManagedNfcOperationDialog.Operation.WRITE,
+                NfcPresentationMessages.resolveWrite(activity, messages), callback::onFailure);
+    }
+
+    private void startFormatOnMain(
+            NfcWriteConfiguration configuration,
+            NfcPresentationMessages.Format messages,
+            NfcClient.FormatCallback callback
+    ) {
+        NfcError error = preparationError();
+        if (error != null) {
+            callback.onFailure(error);
+            return;
+        }
+        Activity activity = availableActivity(callback::onFailure);
+        if (activity == null) return;
+        NfcPresentationMessages.Format resolved = NfcPresentationMessages.resolveFormat(activity, messages);
+        ManagedNfcOperationDialog dialog = presentDialog(
+                activity,
+                ManagedNfcOperationDialog.Operation.FORMAT,
+                NfcPresentationMessages.formatPanelMessages(resolved),
+                callback::onFailure
+        );
+        if (dialog == null) return;
+        client.startFormat(configuration, new ManagedFormatCallback(dialog, resolved, callback));
     }
 
     private NfcError preparationError() {
@@ -249,14 +309,10 @@ public final class NfcWriteController implements AutoCloseable {
         return null;
     }
 
-    private ManagedNfcOperationDialog presentDialog(
-            NfcPresentationMessages.Write messages,
-            Runnable cancellationAction,
-            FailureCallback failureCallback
-    ) {
-        dismissDialog();
+    private Activity availableActivity(FailureCallback failureCallback) {
         Activity activity = activityRef.get();
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            dismissDialog();
             failureCallback.onFailure(new NfcError(
                     NfcErrorCode.INTERNAL_ERROR,
                     "The host Activity is not available",
@@ -264,11 +320,21 @@ public final class NfcWriteController implements AutoCloseable {
             ));
             return null;
         }
+        return activity;
+    }
+
+    private ManagedNfcOperationDialog presentDialog(
+            Activity activity,
+            ManagedNfcOperationDialog.Operation operation,
+            NfcPresentationMessages.Resolved messages,
+            FailureCallback failureCallback
+    ) {
+        dismissDialog();
         ManagedNfcOperationDialog dialog = new ManagedNfcOperationDialog(
                 activity,
-                ManagedNfcOperationDialog.Operation.WRITE,
-                NfcPresentationMessages.resolveWrite(activity, messages),
-                cancellationAction,
+                operation,
+                messages,
+                client::cancelWrite,
                 () -> {
                     if (activeDialog != null && !activeDialog.isShowing()) {
                         activeDialog = null;
@@ -324,6 +390,57 @@ public final class NfcWriteController implements AutoCloseable {
 
     private interface FailureCallback {
         void onFailure(NfcError error);
+    }
+
+    private static final class ManagedFormatCallback implements NfcClient.FormatCallback {
+        private final ManagedNfcOperationDialog dialog;
+        private final NfcPresentationMessages.Format messages;
+        private final NfcClient.FormatCallback callback;
+
+        private ManagedFormatCallback(
+                ManagedNfcOperationDialog dialog,
+                NfcPresentationMessages.Format messages,
+                NfcClient.FormatCallback callback
+        ) {
+            this.dialog = dialog;
+            this.messages = messages;
+            this.callback = callback;
+        }
+
+        @Override
+        public void onVerificationRequired() {
+            dialog.showProgress(messages.verificationRequired);
+            callback.onVerificationRequired();
+        }
+
+        @Override
+        public void onSuccess(NfcFormatResult result) {
+            try {
+                if (result.didFormat()) {
+                    dialog.showSuccess();
+                } else if (result.isVerified()) {
+                    dialog.showSuccess(messages.preserved);
+                } else {
+                    dialog.showNotice(messages.preservedUnverified);
+                }
+            } finally {
+                callback.onSuccess(result);
+            }
+        }
+
+        @Override
+        public void onFailure(NfcError error) {
+            try {
+                dialog.showError(error);
+            } finally {
+                callback.onFailure(error);
+            }
+        }
+
+        @Override
+        public void onStateChanged(boolean formatting) {
+            callback.onStateChanged(formatting);
+        }
     }
 
     private static final class ManagedCallback

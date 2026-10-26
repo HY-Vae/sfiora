@@ -30,12 +30,14 @@ import com.sandrox.sfiora.NfcErrorCode;
 final class ManagedNfcOperationDialog {
     enum Operation {
         READ,
-        WRITE
+        WRITE,
+        FORMAT
     }
 
     private static final long SUCCESS_VISIBLE_MILLIS = 100L;
     private static final long ERROR_VISIBLE_MILLIS = 1_100L;
     private static final long TIMEOUT_VISIBLE_MILLIS = 35L;
+    private static final long NOTICE_VISIBLE_MILLIS = 3_500L;
 
     private final Activity activity;
     private final Operation operation;
@@ -84,6 +86,10 @@ final class ManagedNfcOperationDialog {
         statusIconView = dialog.findViewById(R.id.nfc_reader_scan_status_icon);
         titleView = dialog.findViewById(R.id.nfc_reader_scan_title);
         messageView = dialog.findViewById(R.id.nfc_reader_scan_message);
+        if (operation == Operation.FORMAT) {
+            messageView.setMaxLines(Integer.MAX_VALUE);
+            messageView.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        }
         closeButton = dialog.findViewById(R.id.nfc_reader_scan_close);
         cancelButton = dialog.findViewById(R.id.nfc_reader_scan_cancel);
         ViewGroup.MarginLayoutParams panelLayoutParams =
@@ -158,6 +164,15 @@ final class ManagedNfcOperationDialog {
     }
 
     void showSuccess() {
+        showSuccess(messages.success);
+    }
+
+    void showProgress(String message) {
+        if (!dialog.isShowing() || terminal || dismissing) return;
+        messageView.setText(message);
+    }
+
+    void showSuccess(String message) {
         if (!dialog.isShowing() || terminal || dismissing) {
             return;
         }
@@ -165,7 +180,7 @@ final class ManagedNfcOperationDialog {
         successful = true;
         mainHandler.removeCallbacksAndMessages(this);
         titleView.setText(messages.title);
-        messageView.setText(messages.success);
+        messageView.setText(message);
         statusIconView.animate().cancel();
         statusIconView.setVisibility(View.INVISIBLE);
         scanAnimationView.setVisibility(View.VISIBLE);
@@ -173,6 +188,7 @@ final class ManagedNfcOperationDialog {
         closeButton.setEnabled(true);
         closeButton.setAlpha(1.0f);
         closeButton.setOnClickListener(view -> dismissWithoutCancellation());
+        closeButton.setContentDescription(messages.done);
         cancelButton.setVisibility(View.VISIBLE);
         cancelButton.setEnabled(true);
         cancelButton.setAlpha(1.0f);
@@ -196,6 +212,12 @@ final class ManagedNfcOperationDialog {
             return;
         }
 
+        if (operation == Operation.FORMAT) {
+            showTerminalNotice(R.drawable.nfc_reader_ic_error, messages.failureTitle,
+                    isTimeout(error) ? messages.timeout : errorMessage(error));
+            return;
+        }
+
         if (isTimeout(error)) {
             scanAnimationView.stopAnimation();
             messageView.setText(messages.timeout);
@@ -209,6 +231,28 @@ final class ManagedNfcOperationDialog {
         closeButton.setVisibility(View.INVISIBLE);
         cancelButton.setVisibility(View.INVISIBLE);
         scheduleDismissal(ERROR_VISIBLE_MILLIS);
+    }
+
+    void showNotice(String message) {
+        if (!dialog.isShowing() || terminal || dismissing) return;
+        showTerminalNotice(R.drawable.nfc_reader_ic_info, messages.title, message);
+    }
+
+    private void showTerminalNotice(int icon, String title, String message) {
+        terminal = true;
+        mainHandler.removeCallbacksAndMessages(this);
+        showTerminalIcon(icon);
+        titleView.setText(title);
+        messageView.setText(message);
+        closeButton.setVisibility(View.VISIBLE);
+        closeButton.setEnabled(true);
+        closeButton.setContentDescription(messages.done);
+        closeButton.setOnClickListener(view -> dismissWithoutCancellation());
+        cancelButton.setVisibility(View.VISIBLE);
+        cancelButton.setEnabled(true);
+        cancelButton.setText(messages.done);
+        cancelButton.setOnClickListener(view -> dismissWithoutCancellation());
+        scheduleDismissal(NOTICE_VISIBLE_MILLIS);
     }
 
     void dismissWithoutCancellation() {
@@ -273,7 +317,11 @@ final class ManagedNfcOperationDialog {
     }
 
     private void requestCancellation() {
-        if (terminal || cancellationRequested) {
+        if (terminal) {
+            dismissWithoutCancellation();
+            return;
+        }
+        if (cancellationRequested) {
             return;
         }
         cancellationRequested = true;
@@ -451,6 +499,11 @@ final class ManagedNfcOperationDialog {
         if (error.getCode() == NfcErrorCode.TAG_LOST) {
             return messages.tagLost;
         }
+        if (operation == Operation.FORMAT) {
+            if (error.getCode() == NfcErrorCode.UNSUPPORTED_TAG) return messages.unsupportedTag;
+            if (error.getCode() == NfcErrorCode.WRITE_VERIFICATION_FAILED) return messages.verificationFailed;
+            return messages.failed;
+        }
         if (operation == Operation.WRITE) {
             if (error.getCode() == NfcErrorCode.TAG_READ_ONLY) {
                 return messages.tagReadOnly;
@@ -490,6 +543,7 @@ final class ManagedNfcOperationDialog {
                     || code == NfcErrorCode.UNSUPPORTED_TAG
                     || code == NfcErrorCode.READ_FAILED;
         }
+        if (operation == Operation.FORMAT && code == NfcErrorCode.READ_FAILED) return true;
         return code == NfcErrorCode.NFC_DISABLED
                 || code == NfcErrorCode.NFC_UNSUPPORTED
                 || code == NfcErrorCode.WRITE_TIMEOUT
