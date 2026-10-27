@@ -2,14 +2,13 @@
 
 各渠道的可用版本以对应发布页面为准，离线文件见 [GitHub Releases](https://github.com/sandroxy/sfiora/releases)。
 
-## Unreleased
+## 1.3.0
 
-- UNI 新增 `formatNdef`，覆盖经典 uni-app legacy、经典 UTS 和 uni-app x；Android 共用原生格式化面板与再次贴近验证，能力查询、类型和自定义文案同步提供。iOS 调用明确返回 `NFC_UNSUPPORTED`。
-- React Native 新增 `formatNdef`，在 Android 上使用原生操作面板完成格式化与再次贴近验证，并区分已验证结果和未确认的保留内容；支持新旧架构、能力查询及自定义文案。iOS 调用明确返回 `NFC_UNSUPPORTED`。
-- Android 原生无界面核心新增 `NfcClient.startFormat`，将设备支持格式化的标签准备为 NDEF。移开后再次贴近同一标签，确认可写状态并回读验证空记录。
-- 已具备 NDEF 的标签保留原内容；系统未返回实时消息时明确返回内容未确认，不进行格式化或写入。
-- 格式化支持取消、超时和会话互斥；指令执行后未完成验证时，提示标签可能已经改变。常规读取、写入及按业务标记初始化不会自动触发格式化。
-- `sfiora-ui` 新增 `NfcWriteController.startFormat`，在操作面板中提示移开并再次贴近标签，分别展示格式化成功、原内容保留和内容未确认的结果，支持中英文及完整自定义文案。
+- 新增由调用方明确发起的 Android NDEF 格式化：原生核心提供 `NfcClient.startFormat`，`sfiora-ui` 提供带操作面板的 `NfcWriteController.startFormat`。仅适用于当前 Android 设备支持格式化的标签。
+- RN 新旧架构、经典 uni-app legacy / UTS 和 uni-app x 均提供 `formatNdef`，共用 Android 原生操作面板，并支持能力查询、类型声明和自定义文案。iOS 不提供格式化，调用返回 `NFC_UNSUPPORTED`，不会启动扫描会话。
+- 格式化后要求移开并再次贴近同一标签，核对标签 ID、可写状态和空 NDEF 消息。已具备 NDEF 的标签保留原内容；未取得实时消息时明确返回内容未确认，不进行格式化或写入。
+- 格式化沿用取消、超时和会话互斥；指令执行后未完成验证时，提示标签可能已经改变。常规读取、写入及按业务标记初始化不会自动触发格式化。
+- 格式化面板提供中英文提示和完整自定义文案，区分格式化验证成功、原内容保留和内容未确认。
 - Android 操作面板在结果展示期间支持按返回键关闭，不会再次触发取消回调；标题随换行扩展，避免长标题被裁切。
 
 ## 1.2.0

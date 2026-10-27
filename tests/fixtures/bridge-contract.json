@@ -175,7 +175,7 @@
         "android": {}
       },
       "ndef": {
-        "status": "read",
+        "status": "writable",
         "writable": true,
         "maxSize": 716,
         "messageHex": "D8000000",

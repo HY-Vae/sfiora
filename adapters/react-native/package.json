@@ -1,7 +1,7 @@
 {
   "name": "@sandrox/sfiora",
-  "version": "1.2.0",
-  "description": "NFC tag reading, verified NDEF writing, and marker-based initialization for React Native on Android and iOS.",
+  "version": "1.3.0",
+  "description": "NFC tag reading, verified NDEF writing, and marker-based initialization for React Native on Android and iOS, with explicit NDEF formatting on Android.",
   "main": "index.js",
   "react-native": "index.js",
   "types": "index.d.ts",

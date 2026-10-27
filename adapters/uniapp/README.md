@@ -254,6 +254,8 @@ export async function initializeTag() {
 
 ## NDEF 格式化
 
+需要 Sfiora 1.3.0 或更新版本，并使用匹配的 JS / UTS 包与重新构建的原生宿主。
+
 经典 uni-app legacy、经典 UTS 和 uni-app x 均提供 `formatNdef(options?)`。仅 Android 支持；iOS 调用返回 `NFC_UNSUPPORTED`，不会打开扫描会话。`getCapabilities().features` 包含 `ndefFormat` 表示桥接提供此能力，不保证当前手机能格式化每一种标签。具体支持范围取决于 Android 对该标签是否提供 `NdefFormatable`。
 
 格式化可能改写非 NDEF 数据和存储访问配置，应由用户明确发起，并在操作页面说明风险。它不是恢复出厂，也不会修复损坏、解除永久只读或破解受保护的标签。已经具备 NDEF 的标签不会被格式化或重写，只读标签仍保持只读。
@@ -262,6 +264,11 @@ export async function initializeTag() {
 
 ```js
 async function formatTag() {
+  const capabilities = await sfiora.getCapabilities();
+  if (!capabilities.supported || !capabilities.enabled
+      || !capabilities.features.includes('ndefFormat')) {
+    throw new Error('NDEF 格式化不可用或 NFC 未开启。');
+  }
   return await sfiora.formatNdef({ timeoutMilliseconds: 60000 });
 }
 ```
@@ -269,7 +276,7 @@ async function formatTag() {
 此调用无需传入写入内容。按钮调用方应处理返回值和拒绝，并按下一节管理取消与忙碌状态；不能把未格式化的读取结果自动连接到此操作。
 
 - 首次贴近时，保持标签不动，直到原生面板提示移开。
-- 移开后，再次贴近同一标签。插件确认标签身份、可写状态，并回读验证空的 NDEF 记录。
+- 移开后，再次贴近同一标签。插件核对标签 ID、可写状态，并回读验证空的 NDEF 记录。ID 比对不构成身份认证；应使用 ID 稳定的标签，且每次只贴近一个标签。
 - Promise 在最终结果或错误时结束；等待再次贴近期间仍处于 `isWriting() === true`。
 
 成功结果有 `operation: 'formatNdef'`、`action`、`verified` 和 `tag`：
@@ -281,6 +288,8 @@ async function formatTag() {
 | `action: 'preserved'`、`verified: false` | 已有 NDEF，但系统未返回实时消息；没有写入，内容尚未确认 |
 
 不要只凭 Promise 成功就显示“格式化验证成功”。`preserved` 分支通常一次贴近即可返回，不需要再次贴近验证新格式。uni-app x 的调用返回 `Promise<UTSJSONObject>`，可通过 `result['action'] as string` 和 `result['verified'] as boolean` 读取结果。
+
+`preserved` 且 `verified: false` 时，快照中的 `tag.ndef.status` 为 `readError`，并附有警告；返回的空记录列表不表示标签为空，应另行读取以确认内容。`preserved` 且 `verified: true` 也不保证标签可写，写入前仍需检查快照的 NDEF 状态。
 
 `timeoutMilliseconds` 为 1000–60000 的整数，默认 30000；覆盖格式化和再次贴近验证的完整操作，不会在第一次贴近后重新计时。`messages` 可选，默认使用原生中英文文案。自定义时必须完整提供 `NfcFormatMessages` 的 16 个非空字符串字段：`title`、`instruction`、`cancel`、`done`、`success`、`verificationRequired`、`preserved`、`preservedUnverified`、`failureTitle`、`timeout`、`nfcDisabled`、`nfcUnsupported`、`tagLost`、`unsupportedTag`、`formatFailed`、`verificationFailed`。格式化使用托管面板，不接受无界面配置。
 
@@ -468,7 +477,7 @@ export async function readAndWaitForUi(onResult, onError) {
 
 在 UTS 中使用同样的执行顺序；将 `onResult` 声明为 `(tag: UTSJSONObject) => void`，`onError` 为 `(step: string, error: any) => void`，函数返回 `Promise<boolean>`。局部 `observe` 的签名为 `(step: string, task: Promise<void>): Promise<void>`，`waits` 为 `Promise<void>[]`。直接 UTS 与 JS SDK 都使用同一组等待方法，错误按字段处理。
 
-等待期间保持按钮禁用。仅当页面和操作仍然有效且返回 `true`，才结合设备可用状态恢复按钮；返回 `false` 时重新查询会话及面板，查询失败不能按空闲处理。写入、初始化和取消使用相同的结束观察流程；尤其不能把等待错误解释成写入失败并自动重写。
+等待期间保持按钮禁用。仅当页面和操作仍然有效且返回 `true`，才结合设备可用状态恢复按钮；返回 `false` 时重新查询会话及面板，查询失败不能按空闲处理。写入、初始化、格式化和取消使用相同的结束观察流程；尤其不能把等待错误解释成写入失败并自动重写。
 
 如果希望保留完整动画，等待期间不要启动替换操作或用取消方法隐藏已完成的面板。同一控制器的新操作及宿主销毁可能直接关闭旧面板。
 

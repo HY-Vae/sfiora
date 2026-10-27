@@ -1,6 +1,6 @@
 package com.sandrox.sfiora;
 
-/** Immutable settings for one Android foreground NDEF write. */
+/** Immutable settings for one foreground NDEF write, initialization, or format operation. */
 public final class NfcWriteConfiguration {
     public static final long MINIMUM_TIMEOUT_MILLIS = 1_000L;
     public static final long MAXIMUM_TIMEOUT_MILLIS = 60_000L;

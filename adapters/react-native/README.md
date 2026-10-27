@@ -250,6 +250,8 @@ and business data formats remain with the host.
 
 ## Explicit NDEF formatting
 
+Requires Sfiora 1.3.0 or newer in both the JS package and the rebuilt native app.
+
 `formatNdef` uses the Android managed panel to prepare compatible non-NDEF tags.
 It does not require a message or a business marker. Check for `ndefFormat` in
 `getCapabilities().features`; this identifies the available operation, not a
@@ -295,7 +297,9 @@ Inspect both `action` and `verified` in `NfcFormatResult`:
   written. `verified: true` means live content was read; it does not mean the
   tag is writable. Read-only tags remain read-only.
 - `preserved` with `verified: false` means Android returned no live message.
-  The panel shows an information notice. Read the tag to check its contents;
+  The snapshot reports `tag.ndef.status: 'readError'` with a warning; its empty
+  records do not establish that the tag is empty. The panel shows an information
+  notice. Read the tag to check its contents;
   another format attempt is not a repair for this result.
 
 Cancellation, tag loss, or timeout after the format command may leave a changed
@@ -329,8 +333,9 @@ operation's result or promise that the system panel has disappeared. Handle
 the original Promise rejection as well. Cancelling an inactive operation is
 harmless.
 
-Allow only one read/write action at a time, including across screens. Disable
-both action buttons while a call is pending **or** either native state is true.
+Allow only one NFC operation at a time, including across screens. Keep buttons
+for starting NFC operations disabled while a call is pending **or** either
+native state is true.
 iOS can deliver a successful result while its system panel is still closing;
 wait for actual idle before enabling the next action. The following fragment
 shows the wait; connect success and failure to your screen's button and error

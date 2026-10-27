@@ -23,7 +23,7 @@
     <string name="nfc_reader_write_unsupported">This tag is not formatted for standard NDEF writing.</string>
     <string name="nfc_reader_write_verification_failed">The write could not be verified. Keep the tag close and read it before trying again.</string>
     <string name="nfc_reader_format_title">Ready to Scan</string>
-    <string name="nfc_reader_format_instruction">Hold one NFC tag near the back of your phone. Keep it steady until asked to remove it.</string>
+    <string name="nfc_reader_format_instruction">Hold the NFC tag near the back of your phone. Keep it steady until asked to remove it.</string>
     <string name="nfc_reader_format_success">Formatting complete</string>
     <string name="nfc_reader_format_verify">Remove the tag, then hold the same tag near your phone again to verify formatting.</string>
     <string name="nfc_reader_format_preserved">NDEF already available. Existing content was read; nothing was changed.</string>

@@ -7,7 +7,7 @@ must also satisfy its framework requirements.
 
 Use the [headless client](#headless-read-write-and-initialization) when the app
 owns the NFC interface, or [managed panels](#managed-panels) for the built-in
-scan, write, and initialization UI. Both return the same typed results.
+scan, write, initialization, and formatting UI. Both return the same typed results.
 
 ## Installation
 
@@ -158,6 +158,9 @@ seconds. Start an operation before presenting a tag, or use the optional
 foreground dispatcher below if tags may remain nearby between operations.
 
 ## Explicit NDEF formatting
+
+Requires Sfiora 1.3.0 or newer, including the matching `sfiora-ui` version when
+using managed panels.
 
 `NfcClient.startFormat` prepares tags for NDEF through the headless core.
 For a built-in panel, use `NfcWriteController.startFormat` from `sfiora-ui`;
@@ -560,8 +563,8 @@ The marker does not lock a tag, authenticate an identity, or format a blank tag.
 
 Call from the foreground UI thread and retain the client/controllers while
 closing. Use `isReading()` / `isWriting()` on a client, or `isScanning()` /
-`isWriting()` on the controllers. Disable both actions while a request is
-pending or either state is true. Each callback also offers
+`isWriting()` on the controllers. Keep buttons for starting NFC operations
+disabled while a request is pending or either state is true. Each callback also offers
 `onStateChanged(boolean)` for refreshing the host UI; it describes native
 activity, not panel-animation completion. State queries cover these instances;
 the process-wide coordinator rejects conflicting sessions from other clients.

@@ -13,7 +13,7 @@ The required tools depend on the checks you run:
 | Source and documentation checks | Git, Node.js (CI uses Node 24), Ruby standard library, Python 3, Bash |
 | Android compilation and tests | JDK 17, Android SDK Platform 36, checked-in Gradle wrapper |
 | Apple compilation and portable tests | macOS, Xcode with the iOS SDK and `xcrun swift-format` |
-| Production iOS callback tests | An installed iOS Simulator runtime and the Ruby `xcodeproj` gem or executable |
+| Production iOS callback tests | An available iOS Simulator device and the Ruby `xcodeproj` gem or executable |
 
 For Android, set `JAVA_HOME` and `ANDROID_HOME`, or use an ignored
 `native/android/local.properties` for the SDK path. The library's Java target
@@ -70,10 +70,17 @@ Android core, panel, and bridge checks:
 ```sh
 ./native/android/gradlew -p native/android --no-daemon \
   :sfiora:testDebugUnitTest :sfiora-ui:testDebugUnitTest \
-  :sfiora:lintRelease :sfiora-ui:lintRelease
+  :sfiora:lintRelease :sfiora-ui:lintRelease \
+  :sfiora:assembleRelease :sfiora-ui:assembleRelease
 ./native/android/gradlew -p adapters/android --no-daemon \
+  -PsfioraCoreAar="$(pwd)/native/android/sfiora/build/outputs/aar/sfiora-release.aar" \
+  -PsfioraUiAar="$(pwd)/native/android/sfiora-ui/build/outputs/aar/sfiora-ui-release.aar" \
   :bridge-support:testDebugUnitTest
 ```
+
+The bridge command uses AARs built from the current source. Without these
+properties, the bridge build uses release artifacts from `dist`, which may
+predate the APIs under development. These checks do not replace release artifacts.
 
 Apple checks:
 
@@ -84,8 +91,9 @@ swift test --package-path adapters/shared -Xswiftc -warnings-as-errors
 ```
 
 The first command tests portable Swift source models and codecs. The second
-drives the production `NfcClient` and delegates on an iOS Simulator with system
-boundaries replaced by test doubles. Neither proves real NFC hardware behavior.
+requires an available iOS Simulator device and drives the production `NfcClient`
+and delegates with system boundaries replaced by test doubles. Neither proves
+real NFC hardware behavior.
 Both scripts create temporary projects and remove them on exit; save command
 output separately when a lasting diagnostic log is needed.
 
