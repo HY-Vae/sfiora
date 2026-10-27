@@ -14,7 +14,7 @@ const nativeModule = {
       supported: true,
       enabled: true,
       readerModeSupported: true,
-      features: [],
+      features: ['ndefFormat'],
     };
   },
   async startScan() {
@@ -41,6 +41,15 @@ const nativeModule = {
       platform: 'android',
       operation: 'initializeNdef',
       action: 'preserved',
+    };
+  },
+  async formatNdef() {
+    return {
+      schemaVersion: 1,
+      platform: 'android',
+      operation: 'formatNdef',
+      action: 'preserved',
+      verified: false,
     };
   },
   async cancelWrite() {},

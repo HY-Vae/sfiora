@@ -153,8 +153,10 @@ both RN architectures and reuses `.build/react-native-verification`.
 default HBuilderX location is `/Applications/HBuilderX.app/Contents/HBuilderX`;
 override it with `HBUILDERX_CONTENTS` when needed. Set
 `DCLOUD_UNIAPP_X_ANDROID_SDK_ROOT` and `DCLOUD_UNIAPP_X_IOS_SDK_ROOT` to extracted
-official SDK roots. Its temporary extraction/compiler projects are removed on
-exit. These are package checks, separate from everyday source development.
+official uni-app x Vapor SDK roots. The check compiles the archive for classic
+UTS and x Vapor on both platforms. Its temporary extraction/compiler projects
+are removed on exit. These are package checks, separate from everyday source
+development.
 
 ## Build directories and cleanup
 

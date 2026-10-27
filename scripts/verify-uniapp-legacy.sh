@@ -249,7 +249,7 @@ javap -public \
     com.sandrox.sfiora.uniapp.SfioraUniModule > "${android_api}"
 for method_name in \
     getCapabilities startScan cancelScan isScanning \
-    writeNdef initializeNdef cancelWrite isWriting; do
+    writeNdef initializeNdef formatNdef cancelWrite isWriting; do
     if ! grep -Fq " ${method_name}(" "${android_api}"; then
         echo "UniApp Android module is missing ${method_name}." >&2
         exit 1
@@ -315,6 +315,7 @@ for selector in \
     'getCapabilities:' 'startScan:callback:' 'cancelScan:' 'isScanning:' \
     'writeNdef:options:callback:' \
     'initializeNdef:marker:options:callback:' \
+    'formatNdef:callback:' \
     'cancelWrite:' 'isWriting:'; do
     if ! grep -Fq "${selector}" "${ios_strings}"; then
         echo "UniApp iOS adapter is missing selector ${selector}." >&2

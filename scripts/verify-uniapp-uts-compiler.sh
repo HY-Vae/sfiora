@@ -28,7 +28,7 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ -z "${x_android_sdk_root}" || -z "${x_ios_sdk_root}" ]]; then
-  echo "Set DCLOUD_UNIAPP_X_ANDROID_SDK_ROOT and DCLOUD_UNIAPP_X_IOS_SDK_ROOT to the extracted official SDK roots." >&2
+  echo "Set DCLOUD_UNIAPP_X_ANDROID_SDK_ROOT and DCLOUD_UNIAPP_X_IOS_SDK_ROOT to the extracted official Vapor SDK roots." >&2
   exit 1
 fi
 
@@ -45,7 +45,6 @@ for required_path in \
   "${dcloud_ios_frameworks}/DCloudUTSFoundation.framework" \
   "${x_android_libs}/app-common-release.aar" \
   "${x_android_libs}/app-runtime-release.aar" \
-  "${x_android_libs}/framework-release.aar" \
   "${x_android_libs}/uts-runtime-release.aar" \
   "${x_ios_libs}/DCloudUTSFoundation.xcframework/ios-arm64/DCloudUTSFoundation.framework" \
   "${x_ios_libs}/DCloudUniappRuntime.xcframework/ios-arm64/DCloudUniappRuntime.framework"; do
@@ -76,6 +75,7 @@ compile_uts() {
   UNI_OUTPUT_DIR="${output_dir}" \
   UNI_UTS_PLATFORM="${platform}" \
   UNI_APP_X="${is_x}" \
+  UNI_APP_X_DOM2="${is_x}" \
   NODE_ENV=production \
     "${hbuilder_node}" - "${uts_compiler}" "${package_root}" "${is_x}" <<'NODE'
 const compiler = require(process.argv[2])
@@ -128,6 +128,7 @@ extract_aar_classes() {
 
 verify_android_output() {
   local runtime="$1"
+  local jvm_target="1.8"
   local android_output="${work_dir}/output-${runtime}-app-android/uni_modules/Sandrox-Sfiora/utssdk/app-android"
   local kotlin_source="${android_output}/src/index.kt"
   if [[ ! -f "${kotlin_source}" ]]; then
@@ -143,10 +144,10 @@ verify_android_output() {
   local plugin_aars=("${android_output}"/libs/*.aar)
   extract_aar_classes "${extracted_libs}" "${plugin_aars[@]}"
   if [[ "${runtime}" == "x" ]]; then
+    jvm_target="17"
     extract_aar_classes "${extracted_libs}" \
       "${x_android_libs}/app-common-release.aar" \
       "${x_android_libs}/app-runtime-release.aar" \
-      "${x_android_libs}/framework-release.aar" \
       "${x_android_libs}/uts-runtime-release.aar"
   fi
 
@@ -184,6 +185,7 @@ verify_android_output() {
   local classes_dir="${work_dir}/android-classes-${runtime}"
   "${kotlinc}" \
     -classpath "${kotlin_classpath}" \
+    -jvm-target "${jvm_target}" \
     -d "${classes_dir}" \
     -Xplugin="${kotlin_plugin}" \
     -P plugin:io.dcloud.uts.kotlin:tag=UTS \
@@ -227,4 +229,4 @@ xcrun swiftc -typecheck \
   -F "${x_ios_libs}/DCloudUniappRuntime.xcframework/ios-arm64" \
   "${x_ios_output}"/src/*.swift
 
-printf 'Verified HBuilderX classic and uni-app x UTS compilation for %s\n' "${archive_path}"
+printf 'Verified HBuilderX classic and uni-app x Vapor UTS compilation for %s\n' "${archive_path}"

@@ -12,6 +12,7 @@ async function verifyInstalledPackage() {
       'getPresentationState', 'waitForPresentationEnd',
       'cancelScan',
       'cancelWrite',
+      'formatNdef',
       'getCapabilities',
       'initializeNdef',
       'isScanning',
@@ -30,6 +31,11 @@ async function verifyInstalledPackage() {
   assert.equal(await sfiora.waitForPresentationEnd(), undefined);
   const reactNativeCapabilities = await sfiora.getCapabilities();
   assert.equal(reactNativeCapabilities.platform, 'android');
+  assert.ok(reactNativeCapabilities.features.includes('ndefFormat'));
+  const formatResult = await sfiora.formatNdef({ timeoutMilliseconds: 60000 });
+  assert.equal(formatResult.operation, 'formatNdef');
+  assert.equal(formatResult.action, 'preserved');
+  assert.equal(formatResult.verified, false);
   const writeResult = await sfiora.writeNdef({
     records: [
       {
